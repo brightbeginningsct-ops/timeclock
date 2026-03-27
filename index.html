@@ -191,7 +191,17 @@ label{font-size:12px;color:var(--text2);font-weight:800;display:block;margin-bot
 .pto-req-top{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
 
 @media(max-width:480px){.stats-row{grid-template-columns:1fr 1fr}.emp-grid{grid-template-columns:repeat(auto-fill,minmax(115px,1fr))}}
+
+/* ── LOADING SCREEN ── */
+.loading-screen{position:fixed;inset:0;background:linear-gradient(160deg,var(--bl-lt),#fff 40%,var(--yw-lt));display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999}
+.loading-sun{width:80px;height:80px;background:var(--yellow);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:40px;box-shadow:0 4px 24px rgba(249,197,34,.5);animation:sunPulse 1.8s ease-in-out infinite}
+@keyframes sunPulse{0%,100%{transform:scale(1);box-shadow:0 4px 24px rgba(249,197,34,.5)}50%{transform:scale(1.08);box-shadow:0 6px 32px rgba(249,197,34,.7)}}
+.loading-text{font-family:var(--display);font-size:22px;color:var(--text);margin-top:20px}
+.loading-sub{font-size:13px;color:var(--muted);font-weight:600;margin-top:6px}
+.loading-err{font-size:13px;color:var(--red);font-weight:700;margin-top:14px;text-align:center;max-width:300px;line-height:1.5}
 </style>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 </head>
 <body>
 <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
@@ -214,22 +224,72 @@ function startWeek(d){const x=new Date(d);x.setDate(x.getDate()-x.getDay());x.se
 // OT: >8h/day = daily OT for excess; >40h/week = weekly OT (use daily OT here, weekly shown in report)
 function splitOT(hrs){return{reg:Math.min(hrs,8),ot:Math.max(0,hrs-8)};}
 
-// ─── DATA ────────────────────────────────────────────────────────────────────
-const DB={
-  _g(k,d){try{return JSON.parse(localStorage.getItem(k))??d;}catch{return d;}},
-  _s(k,v){localStorage.setItem(k,JSON.stringify(v));},
-  cfg(){return Object.assign({adminPassword:'admin123',companyName:'Bright Beginnings',accrualRate:1/30,accrualOn:true},this._g('tc_cfg',{}));},
-  saveCfg(c){this._s('tc_cfg',c);},
-  emps(){return this._g('tc_emps',[]);},
-  saveEmps(e){this._s('tc_emps',e);},
-  entries(){return this._g('tc_entries',[]);},
-  saveEntries(e){this._s('tc_entries',e);},
-  ptoLog(){return this._g('tc_plog',[]);},
-  savePTOLog(l){this._s('tc_plog',l);},
-  msgs(){return this._g('tc_msgs',[]);},
-  saveMsgs(m){this._s('tc_msgs',m);},
-  toReqs(){return this._g('tc_toreqs',[]);},
-  saveToReqs(r){this._s('tc_toreqs',r);},
+// ─── FIREBASE SETUP ──────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyAsUF58_SpcTCNGGirwhHd5bfS_4JE4QcM",
+  authDomain: "bright-beginnings-timeclock.firebaseapp.com",
+  databaseURL: "https://bright-beginnings-timeclock-default-rtdb.firebaseio.com",
+  projectId: "bright-beginnings-timeclock",
+  storageBucket: "bright-beginnings-timeclock.firebasestorage.app",
+  messagingSenderId: "873798614696",
+  appId: "1:873798614696:web:ec275b8b82af54aab30c9d"
+};
+firebase.initializeApp(firebaseConfig);
+const fdb = firebase.database();
+
+// ─── LOCAL CACHE (filled by Firebase listeners) ───────────────────────────────
+const COLS = ['settings','employees','entries','pto_log','messages','to_reqs'];
+const _cache = { settings:{}, employees:{}, entries:{}, pto_log:{}, messages:{}, to_reqs:{} };
+const _ready = new Set();
+let _fbError = false;
+
+// Convert Firebase object (keyed by id) → array
+const toArr = obj => obj && typeof obj === 'object' ? Object.values(obj) : [];
+
+// Real-time listeners — one per collection
+COLS.forEach(col => {
+  fdb.ref(col).on('value',
+    snap => {
+      _cache[col] = snap.val() || {};
+      _ready.add(col);
+      render();
+    },
+    err => {
+      console.error('Firebase error on', col, err);
+      _fbError = true;
+      render();
+    }
+  );
+});
+
+function fbReady(){ return COLS.every(c => _ready.has(c)); }
+
+// Write helpers — update cache immediately, then push to Firebase
+function fbSet(col, arr){
+  const obj = {};
+  arr.forEach(item => { if(item && item.id) obj[item.id] = item; });
+  _cache[col] = obj;
+  fdb.ref(col).set(obj).catch(e => console.error('Firebase write error:', e));
+}
+function fbSetObj(col, obj){
+  _cache[col] = obj || {};
+  fdb.ref(col).set(obj || {}).catch(e => console.error('Firebase write error:', e));
+}
+
+// ─── DATA ─────────────────────────────────────────────────────────────────────
+const DB = {
+  cfg(){ return Object.assign({adminPassword:'admin123',companyName:'Bright Beginnings',accrualRate:1/30,accrualOn:true}, _cache.settings); },
+  saveCfg(c){ fbSetObj('settings', c); },
+  emps(){ return toArr(_cache.employees); },
+  saveEmps(arr){ fbSet('employees', arr); },
+  entries(){ return toArr(_cache.entries); },
+  saveEntries(arr){ fbSet('entries', arr); },
+  ptoLog(){ return toArr(_cache.pto_log); },
+  savePTOLog(arr){ fbSet('pto_log', arr); },
+  msgs(){ return toArr(_cache.messages); },
+  saveMsgs(arr){ fbSet('messages', arr); },
+  toReqs(){ return toArr(_cache.to_reqs); },
+  saveToReqs(arr){ fbSet('to_reqs', arr); },
 };
 function getActive(empId){return DB.entries().find(e=>e.employeeId===empId&&!e.clockOut)||null;}
 function getMsgs(entryId){return DB.msgs().filter(m=>m.entryId===entryId).sort((a,b)=>new Date(a.ts)-new Date(b.ts));}
@@ -256,10 +316,7 @@ function toast(msg,type='success'){clearTimeout(S._tt);S.toast={msg,type};S._tt=
 
 // ─── RENDER ──────────────────────────────────────────────────────────────────
 function render(){
-  const map={home:Home,pin:Pin,emp:Emp,'al':AdminLogin,admin:Admin};
-  document.getElementById('app').innerHTML=(map[S.screen]||Home)()+
-    (S.toast?`<div class="toast ${S.toast.type}">${esc(S.toast.msg)}</div>`:'');
-  bind();
+  // Handled by the final render() override below
 }
 
 // ════════════════════════════════════════════════════════════════════════
@@ -770,16 +827,34 @@ function act(a,d={}){
   }
 }
 
-// ─── Handle tor screen ───────────────────────────────────────────────────────
-const _origRender=render;
-const origMap={home:Home,pin:Pin,emp:Emp,'al':AdminLogin,admin:Admin,tor:TORPage};
+// ─── MAIN RENDER ─────────────────────────────────────────────────────────────
+const _screenMap = {home:Home,pin:Pin,emp:Emp,'al':AdminLogin,admin:Admin,tor:TORPage};
+
 function render(){
-  const map=origMap;
-  document.getElementById('app').innerHTML=(map[S.screen]||Home)()+
-    (S.toast?`<div class="toast ${S.toast.type}">${esc(S.toast.msg)}</div>`:'');
+  const app = document.getElementById('app');
+  if(!app) return;
+
+  // Show loading screen until Firebase data arrives
+  if(!fbReady()){
+    app.innerHTML = _fbError
+      ? `<div class="loading-screen"><div class="loading-sun">☀️</div>
+          <div class="loading-text">Bright Beginnings</div>
+          <div class="loading-sub">TimeClock</div>
+          <div class="loading-err">⚠️ Could not connect to the database.<br>Please check your internet connection and reload the page.<br><br>If this keeps happening, the Realtime Database may not be set up yet in Firebase.</div>
+        </div>`
+      : `<div class="loading-screen"><div class="loading-sun">☀️</div>
+          <div class="loading-text">Bright Beginnings</div>
+          <div class="loading-sub">Connecting to database…</div>
+        </div>`;
+    return;
+  }
+
+  app.innerHTML = (_screenMap[S.screen]||Home)()+
+    (S.toast ? `<div class="toast ${S.toast.type}">${esc(S.toast.msg)}</div>` : '');
   bind();
 }
 
+// Initial render (shows loading screen while Firebase connects)
 render();
 </script>
 </body>
