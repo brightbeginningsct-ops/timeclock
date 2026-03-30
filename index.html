@@ -184,6 +184,11 @@ label{font-size:12px;color:var(--text2);font-weight:800;display:block;margin-bot
 .cal-day.past{color:var(--muted)}
 .cal-day.has-req{border-color:var(--yellow)}
 .cal-day.conflict{border-color:var(--ot)}
+.cal-day.tor-conflict{border-color:var(--ot);background:var(--ot-lt)}
+.cal-day.tor-mine{border-color:var(--blue)}
+.cal-day.tor-sel{border-color:var(--blue);background:var(--bl-lt);box-shadow:0 0 0 2px var(--blue)}
+.cal-day.tor-clickable:not(.past):hover{background:var(--bl-lt);border-color:var(--blue);cursor:pointer}
+.cal-day.past{opacity:.45;cursor:default;pointer-events:none}
 .cal-dots{display:flex;gap:2px;flex-wrap:wrap;justify-content:center;margin-top:2px}
 .cal-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
 .dot-pend{background:var(--yellow)}.dot-appr{background:var(--green)}.dot-deny{background:var(--red)}
@@ -309,6 +314,7 @@ let S={
   fEmp:'all',fStart:'',fEnd:'',
   calYear:new Date().getFullYear(),calMonth:new Date().getMonth(),
   selCalDay:null,addTOReq:false,
+  torCalYear:new Date().getFullYear(),torCalMonth:new Date().getMonth(),torSelDay:null,
   toast:null,_tt:null,
 };
 function set(p){Object.assign(S,p);render();}
@@ -390,24 +396,111 @@ function EmpNoteModal(){
 // Time-off request from employee view
 function TORPage(){
   const emp=DB.emps().find(e=>e.id===S.selEmp);if(!emp){S.screen='home';return Home();}
-  const reqs=DB.toReqs().filter(r=>r.empId===emp.id).sort((a,b)=>new Date(b.requestedAt)-new Date(a.requestedAt));
-  const rows=reqs.length===0
-    ?`<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px;font-weight:600">No time-off requests yet.</div>`
-    :reqs.map(r=>`<div class="pto-req-row"><div class="pto-req-top"><div><div style="font-weight:800;font-size:14px">${r.dateLabel}</div><div style="font-size:11px;color:var(--muted);font-weight:600">Requested ${fDate(r.requestedAt)} at ${fTime(r.requestedAt)}</div>${r.note?`<div style="font-size:12px;color:var(--text2);margin-top:2px">"${esc(r.note)}"</div>`:''}</div><span class="badge ${r.status==='approved'?'bg':r.status==='denied'?'br':'by'}">${r.status==='approved'?'✓ Approved':r.status==='denied'?'✗ Denied':'⏳ Pending'}</span></div>${r.adminNote?`<div style="font-size:12px;background:var(--bl-lt);border-radius:7px;padding:5px 8px;color:var(--bl-dk)">Admin: ${esc(r.adminNote)}</div>`:''}</div>`).join('');
-  return`<div class="emp-dash"><div class="emp-hdr"><button class="bk-btn" data-a="go-emp">←</button><div><div class="emp-greet">${esc(emp.name)}</div><div class="emp-name">Time Off Requests</div></div></div>
-  <button class="btn btn-b btn-full" data-a="show-add-tor" style="margin-bottom:13px">+ New Request</button>
-  ${rows}
-  ${S.addTOReq?NewTORModal():''}
-  </div>`;
-}
+  const allReqs=DB.toReqs();
+  const myReqs=allReqs.filter(r=>r.empId===emp.id).sort((a,b)=>new Date(b.requestedAt)-new Date(a.requestedAt));
+  const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const year=S.torCalYear, month=S.torCalMonth;
+  const today=new Date(); today.setHours(0,0,0,0);
 
-function NewTORModal(){
-  const today=isoDate(new Date());
-  return`<div class="modal-overlay" data-a="bg-close"><div class="modal"><h2>🌴 Request Time Off</h2>
-  <div class="field"><label>Date</label><input type="date" id="tor-date" min="${today}"/></div>
-  <div class="field"><label>Note (optional)</label><textarea id="tor-note" placeholder="e.g. Doctor appointment" rows="2"></textarea></div>
-  <div style="display:flex;gap:8px"><button class="btn btn-b" data-a="submit-tor">Submit Request</button><button class="btn btn-g" data-a="close-tor">Cancel</button></div>
-  </div></div>`;
+  // Build day map for ALL requests this month (so staff can see everyone)
+  const dayMap={};
+  allReqs.forEach(r=>{
+    if(r.status==='denied')return;
+    const d=new Date(r.date+'T12:00:00');
+    if(d.getFullYear()===year&&d.getMonth()===month){
+      const k=d.getDate();
+      if(!dayMap[k])dayMap[k]=[];
+      dayMap[k].push(r);
+    }
+  });
+
+  // Calendar grid
+  const firstDay=new Date(year,month,1).getDay();
+  const daysInMonth=new Date(year,month+1,0).getDate();
+  const dayHdrs=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=>`<div class="cal-hdr">${d}</div>`).join('');
+  let cells=Array(firstDay).fill(`<div class="cal-day empty"></div>`);
+  for(let d=1;d<=daysInMonth;d++){
+    const dayReqs=dayMap[d]||[];
+    const thisDate=new Date(year,month,d); thisDate.setHours(0,0,0,0);
+    const isPast=thisDate<today;
+    const isToday=thisDate.getTime()===today.getTime();
+    const isSel=S.torSelDay===d;
+    const myReqThisDay=allReqs.find(r=>r.empId===emp.id&&r.date===`${year}-${fmt(month+1)}-${fmt(d)}`&&r.status!=='denied');
+    const othersCount=dayReqs.filter(r=>r.empId!==emp.id).length;
+    const hasConflict=othersCount>0;
+    const dots=dayReqs.map(r=>{
+      const isMe=r.empId===emp.id;
+      return`<div class="cal-dot ${r.status==='approved'?'dot-appr':'dot-pend'}" style="${isMe?'outline:1.5px solid #888;outline-offset:1px':''}"></div>`;
+    }).join('');
+    const cls=['cal-day',
+      isPast?'past':'',
+      isToday?'today':'',
+      isSel?'tor-sel':'',
+      hasConflict?'tor-conflict':'',
+      myReqThisDay?'tor-mine':'',
+      isPast?'':'tor-clickable'
+    ].filter(Boolean).join(' ');
+    cells.push(`<div class="${cls}" data-a="${isPast?'':'tor-pick-day'}" data-day="${d}" title="${othersCount>0?othersCount+' other request(s) this day':''}">${d}${dots?`<div class="cal-dots">${dots}</div>`:''}</div>`);
+  }
+
+  // Day detail panel — shown when a day is selected
+  let dayPanel='';
+  if(S.torSelDay){
+    const selDateStr=`${year}-${fmt(month+1)}-${fmt(S.torSelDay)}`;
+    const selDateLabel=fDateLong(selDateStr+'T12:00:00');
+    const dayReqs=(dayMap[S.torSelDay]||[]);
+    const othersReqs=dayReqs.filter(r=>r.empId!==emp.id);
+    const myExisting=allReqs.find(r=>r.empId===emp.id&&r.date===selDateStr&&r.status!=='denied');
+    const conflictWarning=othersReqs.length>0
+      ?`<div style="background:var(--ot-lt);border:1.5px solid var(--ot);border-radius:10px;padding:10px 13px;margin-bottom:10px">
+          <div style="font-weight:800;font-size:13px;color:var(--ot);margin-bottom:5px">⚠️ ${othersReqs.length} other staff member${othersReqs.length>1?'s have':' has'} already requested this day off:</div>
+          ${othersReqs.map(r=>`<div style="font-size:12px;font-weight:700;color:var(--text2);padding:2px 0">• ${esc(r.empName)} <span style="color:var(--muted);font-weight:600">(${r.status==='approved'?'✓ approved':'⏳ pending'})</span></div>`).join('')}
+          <div style="font-size:11px;color:var(--muted);margin-top:5px;font-weight:600">You can still submit a request — admin will decide.</div>
+        </div>`
+      :'';
+    const alreadyRequested=myExisting
+      ?`<div style="background:var(--gn-lt);border:1.5px solid var(--green);border-radius:10px;padding:10px 13px;margin-bottom:10px">
+          <div style="font-weight:800;font-size:13px;color:var(--gn-dk)">✓ You already have a request for this day</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:3px">Status: <strong>${myExisting.status}</strong></div>
+        </div>`
+      :'';
+    dayPanel=`<div class="card" style="margin-top:12px;border-color:var(--blue)">
+      <div style="font-family:var(--display);font-size:17px;color:var(--text);margin-bottom:10px">${selDateLabel}</div>
+      ${conflictWarning}${alreadyRequested}
+      ${!myExisting?`<div class="field"><label>Note for admin (optional)</label><textarea id="tor-note" placeholder="e.g. Doctor appointment, personal day" rows="2"></textarea></div>
+      <div style="display:flex;gap:8px"><button class="btn btn-b" data-a="submit-tor" data-date="${selDateStr}" data-label="${selDateLabel}">🌴 Submit Request</button><button class="btn btn-g" data-a="tor-clear-day">Cancel</button></div>`
+      :`<button class="btn btn-g" data-a="tor-clear-day">← Back</button>`}
+    </div>`;
+  }
+
+  // My request history
+  const myRows=myReqs.length===0
+    ?`<div style="color:var(--muted);font-size:13px;text-align:center;padding:14px;font-weight:600">You haven't made any requests yet.</div>`
+    :myReqs.map(r=>`<div class="pto-req-row"><div class="pto-req-top"><div><div style="font-weight:800;font-size:13px">${r.dateLabel}</div><div style="font-size:11px;color:var(--muted);font-weight:600">Submitted ${fDate(r.requestedAt)} at ${fTime(r.requestedAt)}</div>${r.note?`<div style="font-size:12px;color:var(--text2);margin-top:2px">"${esc(r.note)}"</div>`:''}</div><span class="badge ${r.status==='approved'?'bg':r.status==='denied'?'br':'by'}">${r.status==='approved'?'✓ Approved':r.status==='denied'?'✗ Denied':'⏳ Pending'}</span></div>${r.adminNote?`<div style="font-size:12px;background:var(--bl-lt);border-radius:7px;padding:5px 8px;margin-top:5px;color:var(--bl-dk)">Admin: ${esc(r.adminNote)}</div>`:''}</div>`).join('');
+
+  return`<div class="emp-dash">
+    <div class="emp-hdr"><button class="bk-btn" data-a="go-emp">←</button><div><div class="emp-greet">${esc(emp.name)}</div><div class="emp-name">Time Off Requests</div></div></div>
+
+    <div class="card" style="padding:12px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-family:var(--display);font-size:16px;color:var(--text)">${months[month]} ${year}</div>
+        <div style="display:flex;gap:7px"><button class="btn btn-g btn-sm" data-a="tor-cal-prev">‹</button><button class="btn btn-g btn-sm" data-a="tor-cal-next">›</button></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:11px;font-weight:700;margin-bottom:8px">
+        <span style="display:flex;align-items:center;gap:3px"><span class="cal-dot dot-appr"></span> Approved</span>
+        <span style="display:flex;align-items:center;gap:3px"><span class="cal-dot dot-pend"></span> Pending</span>
+        <span style="color:var(--ot)">🟠 = conflict</span>
+        <span style="color:var(--blue-dk)">🔵 = selected</span>
+      </div>
+      <div class="cal-grid">${dayHdrs}${cells.join('')}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;font-weight:600;text-align:center">Tap a future date to request it off</div>
+    </div>
+
+    ${dayPanel}
+
+    <div style="font-family:var(--display);font-size:16px;color:var(--text);margin:14px 0 8px">My Requests</div>
+    ${myRows}
+  </div>`;
 }
 
 // ════════════════════════════════════════════════════════════════════════
@@ -663,10 +756,10 @@ function act(a,d={}){
   switch(a){
     // Navigation
     case 'sel-emp': set({screen:'pin',selEmp:d.emp,pin:'',pinErr:false}); break;
-    case 'go-home': clearInterval(window._clk);set({screen:'home',selEmp:null,pin:'',editEntryId:null,adjPTO:null,addEmp:false,editEmpId:null,noteModal:null,addTOReq:false,selCalDay:null}); break;
+    case 'go-home': clearInterval(window._clk);set({screen:'home',selEmp:null,pin:'',editEntryId:null,adjPTO:null,addEmp:false,editEmpId:null,noteModal:null,addTOReq:false,selCalDay:null,torSelDay:null}); break;
     case 'go-al': set({screen:'al'}); break;
     case 'go-emp': set({screen:'emp',addTOReq:false,selCalDay:null}); break;
-    case 'go-tor': set({screen:'tor'}); break;
+    case 'go-tor': set({screen:'tor',torCalYear:new Date().getFullYear(),torCalMonth:new Date().getMonth(),torSelDay:null}); break;
     case 'admin-login':{const pw=(document.getElementById('apw')||{}).value||'';if(pw===DB.cfg().adminPassword)set({screen:'admin',tab:'overview'});else toast('Incorrect password','error');break;}
     case 'tab': set({tab:d.tab,editEntryId:null,adjPTO:null,addEmp:false,editEmpId:null,selCalDay:null}); break;
     case 'bg-close': set({editEntryId:null,adjPTO:null,noteModal:null,addTOReq:false}); break;
@@ -726,27 +819,32 @@ function act(a,d={}){
     // Time-off requests (employee)
     case 'show-add-tor': set({addTOReq:true}); break;
     case 'submit-tor':{
-      const date=(document.getElementById('tor-date')||{}).value;
+      const date=d.date;
+      const dateLabel=d.label;
       const note=(document.getElementById('tor-note')||{}).value?.trim()||'';
-      if(!date){toast('Please select a date','error');break;}
+      if(!date){toast('Please select a date on the calendar first','error');break;}
       const emp=DB.emps().find(e=>e.id===S.selEmp);
-      // Check for duplicate for this employee
       const existing=DB.toReqs().find(r=>r.empId===emp.id&&r.date===date&&r.status!=='denied');
       if(existing){toast('You already have a request for that date','error');break;}
       const reqs=DB.toReqs();
-      const dateLabel=fDateLong(date+'T12:00:00');
       reqs.push({id:genId(),empId:emp.id,empName:emp.name,date,dateLabel,note,status:'pending',requestedAt:new Date().toISOString(),adminNote:''});
-      DB.saveToReqs(reqs);toast('Request submitted! 🌴');set({addTOReq:false});break;
+      DB.saveToReqs(reqs);toast('Request submitted! 🌴');set({torSelDay:null});break;
     }
 
     // Admin: time-off approve/deny
     case 'appr-tor':{const reqs=DB.toReqs();const idx=reqs.findIndex(r=>r.id===d.rid);if(idx>=0){reqs[idx].status='approved';}DB.saveToReqs(reqs);toast('Approved ✓');render();break;}
     case 'deny-tor':{const reqs=DB.toReqs();const idx=reqs.findIndex(r=>r.id===d.rid);if(idx>=0){reqs[idx].status='denied';}DB.saveToReqs(reqs);toast('Request denied');render();break;}
 
-    // Calendar navigation
+    // Admin calendar navigation
     case 'sel-cal-day': set({selCalDay:parseInt(d.day)}); break;
     case 'cal-prev':{let m=S.calMonth-1,y=S.calYear;if(m<0){m=11;y--;}set({calMonth:m,calYear:y,selCalDay:null});break;}
     case 'cal-next':{let m=S.calMonth+1,y=S.calYear;if(m>11){m=0;y++;}set({calMonth:m,calYear:y,selCalDay:null});break;}
+
+    // Employee TOR calendar navigation
+    case 'tor-cal-prev':{let m=S.torCalMonth-1,y=S.torCalYear;if(m<0){m=11;y--;}set({torCalMonth:m,torCalYear:y,torSelDay:null});break;}
+    case 'tor-cal-next':{let m=S.torCalMonth+1,y=S.torCalYear;if(m>11){m=0;y++;}set({torCalMonth:m,torCalYear:y,torSelDay:null});break;}
+    case 'tor-pick-day': set({torSelDay:parseInt(d.day)}); break;
+    case 'tor-clear-day': set({torSelDay:null}); break;
 
     // Admin: staff management
     case 'show-add-emp': set({addEmp:true,editEmpId:null}); break;
