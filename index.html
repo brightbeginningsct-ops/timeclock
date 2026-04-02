@@ -212,6 +212,36 @@ label{font-size:12px;color:var(--text2);font-weight:800;display:block;margin-bot
 .loading-text{font-family:var(--display);font-size:22px;color:var(--text);margin-top:20px}
 .loading-sub{font-size:13px;color:var(--muted);font-weight:600;margin-top:6px}
 .loading-err{font-size:13px;color:var(--red);font-weight:700;margin-top:14px;text-align:center;max-width:300px;line-height:1.5}
+
+/* ── WEEKLY HOURS ALERT ── */
+.wk-alert{border-radius:14px;padding:12px 15px;margin-bottom:12px;border:2px solid;display:flex;align-items:flex-start;gap:10px}
+.wk-alert.warn{background:#fff8e1;border-color:#f9c522}
+.wk-alert.danger{background:#fff3e0;border-color:var(--ot)}
+.wk-alert.over{background:var(--rd-lt);border-color:var(--red)}
+.wk-alert-icon{font-size:22px;flex-shrink:0;margin-top:1px}
+.wk-alert-ttl{font-weight:800;font-size:13px;margin-bottom:2px}
+.wk-alert.warn .wk-alert-ttl{color:var(--yw-dk)}
+.wk-alert.danger .wk-alert-ttl{color:var(--ot)}
+.wk-alert.over .wk-alert-ttl{color:var(--rd-dk)}
+.wk-alert-sub{font-size:12px;font-weight:600;color:var(--text2)}
+
+/* ── COMMUNITY BOARD ── */
+.board-post{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:14px 15px;margin-bottom:10px;box-shadow:var(--sh)}
+.board-post-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:7px}
+.board-post-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;flex-shrink:0}
+.board-post-meta{flex:1}
+.board-post-name{font-weight:800;font-size:13px;color:var(--text)}
+.board-post-ts{font-size:11px;color:var(--muted);font-weight:600;margin-top:1px}
+.board-post-body{font-size:14px;color:var(--text);line-height:1.55;word-break:break-word}
+.board-post-tag{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:100px;font-size:11px;font-weight:800;margin-bottom:7px}
+.tag-shoutout{background:#fff0f6;color:#b94f7a}
+.tag-announce{background:var(--bl-lt);color:var(--bl-dk)}
+.tag-general{background:var(--surface2);color:var(--text2)}
+.tag-kudos{background:#fffbe6;color:#a0760a}
+.board-new-form{background:var(--surface);border:2px solid var(--blue);border-radius:16px;padding:15px;margin-bottom:14px;box-shadow:var(--sh)}
+.board-tags{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px}
+.tag-btn{padding:5px 13px;border-radius:100px;font-size:12px;font-weight:800;border:2px solid transparent;cursor:pointer;transition:all .12s;touch-action:manipulation}
+.tag-btn.active{border-color:currentColor}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
@@ -323,8 +353,8 @@ firebase.initializeApp(firebaseConfig);
 const fdb = firebase.database();
 
 // ─── LOCAL CACHE (filled by Firebase listeners) ───────────────────────────────
-const COLS = ['settings','employees','entries','pto_log','messages','to_reqs'];
-const _cache = { settings:{}, employees:{}, entries:{}, pto_log:{}, messages:{}, to_reqs:{} };
+const COLS = ['settings','employees','entries','pto_log','messages','to_reqs','board_posts'];
+const _cache = { board_posts:{}, settings:{}, employees:{}, entries:{}, pto_log:{}, messages:{}, to_reqs:{} };
 const _ready = new Set();
 let _fbError = false;
 
@@ -400,6 +430,8 @@ const DB = {
   saveMsgs(arr){ fbSet('messages', arr); },
   toReqs(){ return toArr(_cache.to_reqs); },
   saveToReqs(arr){ fbSet('to_reqs', arr); },
+  boardPosts(){ return toArr(_cache.board_posts).sort((a,b)=>new Date(b.ts)-new Date(a.ts)); },
+  saveBoardPosts(arr){ fbSet('board_posts', arr); },
 };
 function getActive(empId){return DB.entries().find(e=>e.employeeId===empId&&!e.clockOut)||null;}
 function getMsgs(entryId){return DB.msgs().filter(m=>m.entryId===entryId).sort((a,b)=>new Date(a.ts)-new Date(b.ts));}
@@ -421,6 +453,7 @@ let S={
   calYear:new Date().getFullYear(),calMonth:new Date().getMonth(),
   selCalDay:null,addTOReq:false,
   torCalYear:new Date().getFullYear(),torCalMonth:new Date().getMonth(),torSelDay:null,
+  boardCompose:false,boardTag:'general',
   toast:null,_tt:null,
 };
 function set(p){Object.assign(S,p);render();}
@@ -462,6 +495,19 @@ function Pin(){
 // ════════════════════════════════════════════════════════════════════════
 // EMPLOYEE DASHBOARD
 // ════════════════════════════════════════════════════════════════════════
+
+// ─── WEEKLY HOURS ALERT ──────────────────────────────────────────────────────
+function weeklyAlert(wkH){
+  if(wkH>=40){
+    return`<div class="wk-alert over"><div class="wk-alert-icon">🚨</div><div><div class="wk-alert-ttl">Overtime reached — ${fH(wkH)}h this week</div><div class="wk-alert-sub">You are over 40 hours. Please notify your manager.</div></div></div>`;
+  } else if(wkH>=36){
+    return`<div class="wk-alert danger"><div class="wk-alert-icon">⚠️</div><div><div class="wk-alert-ttl">Almost at 40 hours — ${fH(wkH)}h this week</div><div class="wk-alert-sub">Only ${fH(40-wkH)}h left before overtime. Heads up!</div></div></div>`;
+  } else if(wkH>=32){
+    return`<div class="wk-alert warn"><div class="wk-alert-icon">🕐</div><div><div class="wk-alert-ttl">Approaching 40 hours — ${fH(wkH)}h this week</div><div class="wk-alert-sub">${fH(40-wkH)}h remaining before overtime this week.</div></div></div>`;
+  }
+  return '';
+}
+
 function Emp(){
   const emp=DB.emps().find(e=>e.id===S.selEmp);if(!emp){S.screen='home';return Home();}
   const active=getActive(emp.id);const now=new Date();
@@ -492,8 +538,10 @@ function Emp(){
   <div class="note-box"><label>📝 Optional note with this punch</label><textarea id="clock-note" placeholder="e.g. Clocking in a few minutes late — car trouble." rows="2"></textarea></div>
   <button class="ck-btn ${active?'out':'in'}" data-a="toggle-clock">${active?'⏹ Clock Out':'▶ Clock In'}</button>
   ${active?`<button class="btn ${onBreak?'btn-b':'btn-g'} btn-full" style="margin-bottom:13px;padding:13px 16px;border-radius:14px" data-a="${onBreak?'end-break':'start-break'}">${onBreak?'▶ End Break':'⏸ Start Break'}</button>`:''}
+  \${weeklyAlert(wkH)}
   <div class="stats-row"><div class="stat-box"><div class="stat-lbl">Today</div><div class="stat-val">${fH(todH)}h</div></div><div class="stat-box"><div class="stat-lbl">This Week</div><div class="stat-val">${fH(wkH)}h</div></div><div class="stat-box pto"><div class="stat-lbl">PTO Left</div><div class="stat-val">${fH(emp.ptoBalance||0)}h</div></div></div>
-  <div style="display:flex;gap:8px;margin-bottom:13px"><button class="btn btn-g btn-sm btn-full" data-a="go-timecards">🗂 View All Timecards</button><button class="btn btn-g btn-sm btn-full" data-a="go-tor">🌴 Request Time Off${pendTOR>0?` (${pendTOR} pending)`:''}</button></div>
+  <div style="display:flex;gap:8px;margin-bottom:8px"><button class="btn btn-g btn-sm btn-full" data-a="go-timecards">🗂 View All Timecards</button><button class="btn btn-g btn-sm btn-full" data-a="go-tor">🌴 Request Time Off${pendTOR>0?` (${pendTOR} pending)`:''}</button></div>
+  <div style="margin-bottom:13px"><button class="btn btn-y btn-sm btn-full" data-a="go-board">📣 Staff Board</button></div>
   <div class="card"><div class="recent-ttl">Recent Shifts — tap 💬 to message admin</div>${recentRows}</div>
   ${noteModalHTML}${reminderHTML}</div>`;
 }
@@ -532,6 +580,96 @@ function EmpAutoReminderModal(entry){
   <div class="field"><label>What time did you leave? (optional)</label><input type="time" id="mr-time"/></div>
   <div class="field"><label>Note to admin</label><textarea id="mr-note" placeholder="e.g. I left at 5:12 PM and forgot to clock out." rows="2"></textarea></div>
   <div style="display:flex;gap:8px"><button class="btn btn-b" data-a="submit-missed-reminder" data-entry="${entry.id}">Send to Admin</button><button class="btn btn-g" data-a="dismiss-missed-reminder" data-entry="${entry.id}">Remind me later</button></div></div></div>`;
+}
+
+
+// ─── COMMUNITY BOARD ─────────────────────────────────────────────────────────
+const BOARD_TAGS=[
+  {id:'general', label:'💬 General',  cls:'tag-general'},
+  {id:'shoutout',label:'🙌 Shoutout', cls:'tag-shoutout'},
+  {id:'kudos',   label:'⭐ Kudos',    cls:'tag-kudos'},
+  {id:'announce',label:'📢 Announce', cls:'tag-announce'},
+];
+
+function BoardScreen(){
+  const emp=DB.emps().find(e=>e.id===S.selEmp);if(!emp){S.screen='home';return Home();}
+  const posts=DB.boardPosts();
+  const selTag=S.boardTag||'general';
+
+  const tagBtns=BOARD_TAGS.map(t=>`<button class="tag-btn ${t.cls} ${selTag===t.id?'active':''}" data-a="board-tag" data-tag="${t.id}">${t.label}</button>`).join('');
+
+  const ini=emp.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  const avColors=['#e0f6fc','#fde9f1','#fff8d6','#e6f5ea','#fff3e0'];
+  const avColor=avColors[emp.name.charCodeAt(0)%avColors.length];
+
+  const newForm=S.boardCompose?`<div class="board-new-form">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px">
+      <div class="board-post-av" style="background:${avColor}">${ini}</div>
+      <div style="font-weight:800;font-size:14px;color:var(--text)">${esc(emp.name)}</div>
+    </div>
+    <div class="board-tags">${tagBtns}</div>
+    <div class="field"><textarea id="board-msg" placeholder="${selTag==='shoutout'?'Give someone a shoutout!':selTag==='kudos'?'Recognize a great job!':selTag==='announce'?'Share an announcement with the team…':'Say something to the team…'}" rows="3" style="font-size:15px"></textarea></div>
+    <div style="display:flex;gap:8px"><button class="btn btn-y" data-a="board-post">Post 📣</button><button class="btn btn-g" data-a="board-cancel">Cancel</button></div>
+  </div>`
+  :`<button class="btn btn-y btn-full" data-a="board-compose" style="margin-bottom:14px">✏️ Write a Post</button>`;
+
+  const postHTML=posts.length===0
+    ?`<div style="text-align:center;padding:30px 20px;color:var(--muted)"><div style="font-size:36px;margin-bottom:10px">📣</div><div style="font-weight:600">Nothing posted yet.<br>Be the first to say something!</div></div>`
+    :posts.map(p=>{
+      const postEmp=DB.emps().find(e=>e.id===p.empId);
+      const pIni=(p.empName||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+      const pColor=avColors[(p.empName||'?').charCodeAt(0)%avColors.length];
+      const tag=BOARD_TAGS.find(t=>t.id===p.tag)||BOARD_TAGS[0];
+      const canDel=p.empId===emp.id;
+      return`<div class="board-post">
+        <div class="board-post-hdr">
+          <div class="board-post-av" style="background:${pColor}">${pIni}</div>
+          <div class="board-post-meta">
+            <div class="board-post-name">${esc(p.empName||'Staff')}</div>
+            <div class="board-post-ts">${fDate(p.ts)} at ${fTime(p.ts)}</div>
+          </div>
+          ${canDel?`<button class="btn btn-g btn-sm" style="padding:3px 9px;font-size:11px" data-a="board-del" data-pid="${p.id}">✕</button>`:''}
+        </div>
+        <span class="board-post-tag ${tag.cls}">${tag.label}</span>
+        <div class="board-post-body">${esc(p.body)}</div>
+      </div>`;
+    }).join('');
+
+  return`<div class="emp-dash">
+    <div class="emp-hdr"><button class="bk-btn" data-a="go-emp">←</button><div><div class="emp-greet">Bright Beginnings</div><div class="emp-name">Staff Board 📣</div></div></div>
+    ${newForm}
+    <div style="font-family:var(--display);font-size:16px;color:var(--text);margin-bottom:10px">Recent Posts</div>
+    ${postHTML}
+  </div>`;
+}
+
+// Admin board view (read + moderate)
+function AdminBoard(){
+  const emps=DB.emps();
+  const posts=DB.boardPosts();
+  const postHTML=posts.length===0
+    ?`<div style="text-align:center;padding:30px;color:var(--muted);font-weight:600">No posts yet.</div>`
+    :posts.map(p=>{
+      const tag=BOARD_TAGS.find(t=>t.id===p.tag)||BOARD_TAGS[0];
+      const avColors=['#e0f6fc','#fde9f1','#fff8d6','#e6f5ea','#fff3e0'];
+      const pColor=avColors[(p.empName||'?').charCodeAt(0)%avColors.length];
+      const pIni=(p.empName||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+      return`<div class="board-post">
+        <div class="board-post-hdr">
+          <div class="board-post-av" style="background:${pColor}">${pIni}</div>
+          <div class="board-post-meta">
+            <div class="board-post-name">${esc(p.empName||'Staff')}</div>
+            <div class="board-post-ts">${fDate(p.ts)} at ${fTime(p.ts)}</div>
+          </div>
+          <button class="btn btn-r btn-sm" style="padding:3px 9px;font-size:11px" data-a="board-admin-del" data-pid="${p.id}">🗑 Remove</button>
+        </div>
+        <span class="board-post-tag ${tag.cls}">${tag.label}</span>
+        <div class="board-post-body">${esc(p.body)}</div>
+      </div>`;
+    }).join('');
+  return`<div class="sec-hdr"><div class="sec-ttl">Staff Board</div><span class="badge bb">${posts.length} post${posts.length!==1?'s':''}</span></div>
+  <p style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:12px">Staff posts appear here. You can remove any post that is inappropriate.</p>
+  ${postHTML}`;
 }
 
 // Time-off request from employee view
@@ -664,10 +802,11 @@ function Admin(){
     {id:'pto',label:'🌴 PTO'},
     {id:'tor',label:`📅 Time Off${pendTOR>0?` <span style="background:var(--pink);color:#fff;border-radius:100px;padding:1px 6px;font-size:10px">${pendTOR}</span>`:''}`},
     {id:'notes',label:`💬 Notes${unread>0?` <span style="background:var(--pink);color:#fff;border-radius:100px;padding:1px 6px;font-size:10px">${unread}</span>`:''}`},
+    {id:'board',label:'📣 Staff Board'},
     {id:'settings',label:'⚙ Settings'},
   ];
   const tabBar=tabs.map(t=>`<div class="tab-it ${S.tab===t.id?'active':''}" data-a="tab" data-tab="${t.id}">${t.label}</div>`).join('');
-  const content={overview:AOverview,staff:AStaff,time:ATime,pto:APTO,tor:ATOR,notes:ANotes,settings:ASettings}[S.tab]?.()||'';
+  const content={overview:AOverview,staff:AStaff,time:ATime,pto:APTO,tor:ATOR,notes:ANotes,board:AdminBoard,settings:ASettings}[S.tab]?.()||'';
   return`<div class="admin"><div class="admin-top"><div class="adm-brand"><div class="sun" style="width:28px;height:28px;font-size:15px">☀️</div><span style="font-family:var(--display);font-size:17px;color:var(--text)">Bright Beginnings</span><span class="adm-pill">ADMIN</span></div><button class="btn btn-g btn-sm" data-a="go-home">← Exit</button></div><div class="tab-bar">${tabBar}</div><div class="adm-cnt">${content}</div></div>`;
 }
 
@@ -908,7 +1047,7 @@ function act(a,d={}){
   switch(a){
     // Navigation
     case 'sel-emp': set({screen:'pin',selEmp:d.emp,pin:'',pinErr:false}); break;
-    case 'go-home': clearInterval(window._clk);set({screen:'home',selEmp:null,pin:'',editEntryId:null,adjPTO:null,addEmp:false,editEmpId:null,noteModal:null,addTOReq:false,selCalDay:null,torSelDay:null}); break;
+    case 'go-home': clearInterval(window._clk);set({screen:'home',selEmp:null,pin:'',editEntryId:null,adjPTO:null,addEmp:false,editEmpId:null,noteModal:null,addTOReq:false,selCalDay:null,torSelDay:null,boardCompose:false}); break;
     case 'go-al': set({screen:'al'}); break;
     case 'go-emp': set({screen:'emp',addTOReq:false,selCalDay:null}); break;
     case 'go-timecards': set({screen:'etimecards'}); break;
@@ -1115,6 +1254,33 @@ function act(a,d={}){
     case 'save-rate':{const r=parseFloat((document.getElementById('s-rate')||{}).value);if(isNaN(r)||r<0){toast('Invalid rate','error');break;}const cfg=DB.cfg();cfg.accrualRate=r;DB.saveCfg(cfg);toast('Rate saved!');render();break;}
     case 'clear-entries':{if(!confirm('Delete ALL time entries? Cannot be undone.'))break;DB.saveEntries([]);DB.saveMsgs([]);toast('Cleared');render();break;}
 
+
+    // ── Community Board actions ───────────────────────────────────────────────
+    case 'go-board': set({screen:'board',boardCompose:false,boardTag:'general'}); break;
+    case 'board-compose': set({boardCompose:true}); break;
+    case 'board-cancel': set({boardCompose:false,boardTag:'general'}); break;
+    case 'board-tag': set({boardTag:d.tag}); break;
+    case 'board-post':{
+      const body=(document.getElementById('board-msg')||{}).value?.trim();
+      if(!body){toast('Please write something first','error');break;}
+      if(body.length>500){toast('Post too long (max 500 characters)','error');break;}
+      const emp=DB.emps().find(e=>e.id===S.selEmp);
+      const posts=DB.boardPosts();
+      posts.push({id:genId(),empId:emp.id,empName:emp.name,tag:S.boardTag||'general',body,ts:new Date().toISOString()});
+      DB.saveBoardPosts(posts);
+      toast('Posted! 📣');set({boardCompose:false,boardTag:'general'});break;
+    }
+    case 'board-del':{
+      if(!confirm('Delete your post?'))break;
+      DB.saveBoardPosts(DB.boardPosts().filter(p=>p.id!==d.pid));
+      toast('Post deleted');render();break;
+    }
+    case 'board-admin-del':{
+      if(!confirm('Remove this post from the board?'))break;
+      DB.saveBoardPosts(DB.boardPosts().filter(p=>p.id!==d.pid));
+      toast('Post removed');render();break;
+    }
+
     // CSV export
     case 'export-csv':{
       const emps=DB.emps();let entries=DB.entries().filter(e=>e.clockOut);
@@ -1139,7 +1305,7 @@ function act(a,d={}){
 }
 
 // ─── MAIN RENDER ─────────────────────────────────────────────────────────────
-const _screenMap = {home:Home,pin:Pin,emp:Emp,etimecards:EmpTimecards,'al':AdminLogin,admin:Admin,tor:TORPage};
+const _screenMap = {home:Home,pin:Pin,emp:Emp,etimecards:EmpTimecards,'al':AdminLogin,admin:Admin,tor:TORPage,board:BoardScreen};
 
 function render(){
   const app = document.getElementById('app');
