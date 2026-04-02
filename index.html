@@ -4,6 +4,14 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
 <title>Bright Beginnings · TimeClock</title>
+<meta name="theme-color" content="#3bbde0"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-title" content="TimeClock"/>
+<link rel="manifest" href="manifest.webmanifest"/>
+<link rel="icon" type="image/svg+xml" href="icon.svg"/>
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
+<link rel="apple-touch-icon" href="icon-192.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fredoka+One&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
 <style>
 /* ── TOUCH SUPPORT ── */
@@ -222,6 +230,9 @@ function fDateLong(d){const x=new Date(d);return`${['Sunday','Monday','Tuesday',
 function toLocal(iso){const d=new Date(iso);return`${d.getFullYear()}-${fmt(d.getMonth()+1)}-${fmt(d.getDate())}T${fmt(d.getHours())}:${fmt(d.getMinutes())}`;}
 function isoDate(d){const x=new Date(d);return`${x.getFullYear()}-${fmt(x.getMonth()+1)}-${fmt(x.getDate())}`;}
 const fH=h=>(h||0).toFixed(2);
+const IDLE_TIMEOUT_MS=20000;
+let _idleTimer=null;
+let _idleBound=false;
 function localDayEndISO(d){const x=new Date(d);const eod=new Date(x.getFullYear(),x.getMonth(),x.getDate(),23,59,0,0);return eod.toISOString();}
 function addFlag(entry,flag){const flags=Array.isArray(entry.flags)?entry.flags.slice():[];if(!flags.includes(flag))flags.push(flag);entry.flags=flags;}
 function entryHours(entry){if(!entry?.clockIn||!entry?.clockOut)return 0;return (new Date(entry.clockOut)-new Date(entry.clockIn))/3600000;}
@@ -272,6 +283,24 @@ function shouldShowMissedClockReminder(entry){
   if(!entry||!entry.autoClosed||entry.employeeReminderAck)return false;
   if(!entry.employeeReminderSnoozeAt)return true;
   return isoDate(entry.employeeReminderSnoozeAt)!==isoDate(new Date());
+}
+function isIdleProtectedScreen(){
+  return ['pin','emp','etimecards','tor','admin'].includes(S.screen);
+}
+function resetIdleTimer(){
+  clearTimeout(_idleTimer);
+  if(!isIdleProtectedScreen())return;
+  _idleTimer=setTimeout(()=>{
+    if(!isIdleProtectedScreen())return;
+    clearInterval(window._clk);
+    set({screen:'home',selEmp:null,pin:'',editEntryId:null,adjPTO:null,addEmp:false,editEmpId:null,noteModal:null,addTOReq:false,selCalDay:null,torSelDay:null});
+    toast('Returned to home after 20 seconds of inactivity.','error');
+  },IDLE_TIMEOUT_MS);
+}
+function bindIdleTracking(){
+  if(_idleBound)return;
+  _idleBound=true;
+  ['click','touchstart','keydown'].forEach(evt=>document.addEventListener(evt,resetIdleTimer,{passive:true}));
 }
 function clockStr(){const n=new Date(),h=n.getHours(),m=n.getMinutes(),s=n.getSeconds();return`${fmt(h%12||12)}:${fmt(m)}:${fmt(s)} ${h>=12?'PM':'AM'}`;}
 function dateStr(){const n=new Date();return`${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][n.getDay()]}, ${['January','February','March','April','May','June','July','August','September','October','November','December'][n.getMonth()]} ${n.getDate()}, ${n.getFullYear()}`;}
@@ -388,6 +417,7 @@ let S={
   tab:'overview',editEmpId:null,addEmp:false,
   editEntryId:null,adjPTO:null,noteModal:null,
   fEmp:'all',fStart:'',fEnd:'',fFlag:'all',
+  ehStart:'',ehEnd:'',
   calYear:new Date().getFullYear(),calMonth:new Date().getMonth(),
   selCalDay:null,addTOReq:false,
   torCalYear:new Date().getFullYear(),torCalMonth:new Date().getMonth(),torSelDay:null,
@@ -463,9 +493,29 @@ function Emp(){
   <button class="ck-btn ${active?'out':'in'}" data-a="toggle-clock">${active?'⏹ Clock Out':'▶ Clock In'}</button>
   ${active?`<button class="btn ${onBreak?'btn-b':'btn-g'} btn-full" style="margin-bottom:13px;padding:13px 16px;border-radius:14px" data-a="${onBreak?'end-break':'start-break'}">${onBreak?'▶ End Break':'⏸ Start Break'}</button>`:''}
   <div class="stats-row"><div class="stat-box"><div class="stat-lbl">Today</div><div class="stat-val">${fH(todH)}h</div></div><div class="stat-box"><div class="stat-lbl">This Week</div><div class="stat-val">${fH(wkH)}h</div></div><div class="stat-box pto"><div class="stat-lbl">PTO Left</div><div class="stat-val">${fH(emp.ptoBalance||0)}h</div></div></div>
-  <div style="display:flex;gap:8px;margin-bottom:13px"><button class="btn btn-g btn-sm btn-full" data-a="go-tor">🌴 Request Time Off${pendTOR>0?` (${pendTOR} pending)`:''}</button></div>
+  <div style="display:flex;gap:8px;margin-bottom:13px"><button class="btn btn-g btn-sm btn-full" data-a="go-timecards">🗂 View All Timecards</button><button class="btn btn-g btn-sm btn-full" data-a="go-tor">🌴 Request Time Off${pendTOR>0?` (${pendTOR} pending)`:''}</button></div>
   <div class="card"><div class="recent-ttl">Recent Shifts — tap 💬 to message admin</div>${recentRows}</div>
   ${noteModalHTML}${reminderHTML}</div>`;
+}
+
+function EmpTimecards(){
+  const emp=DB.emps().find(e=>e.id===S.selEmp);if(!emp){S.screen='home';return Home();}
+  let entries=DB.entries().filter(e=>e.employeeId===emp.id&&e.clockOut);
+  if(S.ehStart)entries=entries.filter(e=>new Date(e.clockIn)>=new Date(S.ehStart));
+  if(S.ehEnd){const en=new Date(S.ehEnd);en.setHours(23,59,59,999);entries=entries.filter(e=>new Date(e.clockIn)<=en);}
+  entries=entries.sort((a,b)=>new Date(b.clockIn)-new Date(a.clockIn));
+  const totals=entries.reduce((s,e)=>{const h=workedHours(e);const x=splitOT(h);s.total+=h;s.reg+=x.reg;s.ot+=x.ot;return s;},{total:0,reg:0,ot:0});
+  const rows=entries.length===0
+    ?`<div style="color:var(--muted);font-size:13px;padding:14px;text-align:center;font-weight:600">No timecards in this date range.</div>`
+    :entries.map(e=>{
+      const h=workedHours(e),b=breakHours(e),x=splitOT(h);
+      const fl=getEntryFlags(e);
+      return`<div class="e-row"><div class="e-top"><div><div class="e-date">${fDateLong(e.clockIn)}</div><div class="e-times">${fTime(e.clockIn)} – ${fTime(e.clockOut)}</div></div><div class="e-right"><span class="e-hrs">${fH(x.reg)}h</span>${x.ot>0?`<span class="e-ot">+${fH(x.ot)}OT</span>`:''}</div></div><div style="font-size:11px;color:var(--text2);margin-top:3px;font-weight:700">Worked: ${fH(h)}h${b>0?` · Breaks: ${fH(b)}h`:''}</div>${fl.length>0?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:5px">${fl.map(f=>`<span class="badge ${e.flagReviewed?'bm':'bo'}">${esc(flagLabel(f))}</span>`).join('')}</div>`:''}</div>`;
+    }).join('');
+  return`<div class="emp-dash"><div class="emp-hdr"><button class="bk-btn" data-a="go-emp">←</button><div><div class="emp-greet">${esc(emp.name)}</div><div class="emp-name">My Timecards</div></div></div>
+  <div class="card" style="margin-bottom:11px"><div class="filters" style="margin-bottom:9px"><input type="date" id="ehs" value="${S.ehStart}" data-action="ehStart"/><input type="date" id="ehe" value="${S.ehEnd}" data-action="ehEnd"/><button class="btn btn-g btn-sm" data-a="clear-eh">Clear</button></div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"><div class="stat-box"><div class="stat-lbl">Regular</div><div class="stat-val">${fH(totals.reg)}h</div></div><div class="stat-box"><div class="stat-lbl">OT</div><div class="stat-val">${fH(totals.ot)}h</div></div><div class="stat-box"><div class="stat-lbl">Total</div><div class="stat-val">${fH(totals.total)}h</div></div></div></div>
+  <div class="card"><div class="recent-ttl">Complete Timecard History (${entries.length})</div>${rows}</div></div>`;
 }
 
 function EmpNoteModal(){
@@ -823,12 +873,16 @@ function ASettings(){
 function bind(){
   clearInterval(window._clk);
   if(S.screen==='home')window._clk=setInterval(()=>{const el=document.getElementById('lc');if(el)el.textContent=clockStr();else clearInterval(window._clk);},1000);
+  bindIdleTracking();
+  resetIdleTimer();
 
   // Filter changes
   document.querySelectorAll('[data-action="fEmp"]').forEach(el=>el.addEventListener('change',()=>set({fEmp:el.value})));
   document.querySelectorAll('[data-action="fStart"]').forEach(el=>el.addEventListener('change',()=>set({fStart:el.value})));
   document.querySelectorAll('[data-action="fEnd"]').forEach(el=>el.addEventListener('change',()=>set({fEnd:el.value})));
   document.querySelectorAll('[data-action="fFlag"]').forEach(el=>el.addEventListener('change',()=>set({fFlag:el.value})));
+  document.querySelectorAll('[data-action="ehStart"]').forEach(el=>el.addEventListener('change',()=>set({ehStart:el.value})));
+  document.querySelectorAll('[data-action="ehEnd"]').forEach(el=>el.addEventListener('change',()=>set({ehEnd:el.value})));
 
   // Admin login enter key
   const apw=document.getElementById('apw');
@@ -857,6 +911,7 @@ function act(a,d={}){
     case 'go-home': clearInterval(window._clk);set({screen:'home',selEmp:null,pin:'',editEntryId:null,adjPTO:null,addEmp:false,editEmpId:null,noteModal:null,addTOReq:false,selCalDay:null,torSelDay:null}); break;
     case 'go-al': set({screen:'al'}); break;
     case 'go-emp': set({screen:'emp',addTOReq:false,selCalDay:null}); break;
+    case 'go-timecards': set({screen:'etimecards'}); break;
     case 'go-tor': set({screen:'tor',torCalYear:new Date().getFullYear(),torCalMonth:new Date().getMonth(),torSelDay:null}); break;
     case 'admin-login':{const pw=(document.getElementById('apw')||{}).value||'';if(pw===DB.cfg().adminPassword)set({screen:'admin',tab:'overview'});else toast('Incorrect password','error');break;}
     case 'tab': set({tab:d.tab,editEntryId:null,adjPTO:null,addEmp:false,editEmpId:null,selCalDay:null}); break;
@@ -997,6 +1052,7 @@ function act(a,d={}){
     case 'tor-cal-next':{let m=S.torCalMonth+1,y=S.torCalYear;if(m>11){m=0;y++;}set({torCalMonth:m,torCalYear:y,torSelDay:null});break;}
     case 'tor-pick-day': set({torSelDay:parseInt(d.day)}); break;
     case 'tor-clear-day': set({torSelDay:null}); break;
+    case 'clear-eh': set({ehStart:'',ehEnd:''}); break;
 
     // Admin: staff management
     case 'show-add-emp': set({addEmp:true,editEmpId:null}); break;
@@ -1083,7 +1139,7 @@ function act(a,d={}){
 }
 
 // ─── MAIN RENDER ─────────────────────────────────────────────────────────────
-const _screenMap = {home:Home,pin:Pin,emp:Emp,'al':AdminLogin,admin:Admin,tor:TORPage};
+const _screenMap = {home:Home,pin:Pin,emp:Emp,etimecards:EmpTimecards,'al':AdminLogin,admin:Admin,tor:TORPage};
 
 function render(){
   const app = document.getElementById('app');
@@ -1116,4 +1172,3 @@ render();
 </script>
 </body>
 </html>
-
