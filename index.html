@@ -473,7 +473,7 @@ function Home(){
   const cards=emps.length===0
     ?`<div style="grid-column:1/-1;text-align:center;padding:40px 20px;color:var(--muted)"><div style="font-size:34px;margin-bottom:10px">👋</div><p>No staff yet. Tap <strong>Admin</strong> to add staff.</p></div>`
     :emps.map(e=>{const a=getActive(e.id);const i=e.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);return`<div class="emp-card ${a?'cin':''}" data-a="sel-emp" data-emp="${e.id}"><div class="emp-av">${i}</div><div class="emp-card-name">${esc(e.name)}</div><div class="emp-card-st">${a?'● CLOCKED IN':'○ CLOCKED OUT'}</div></div>`;}).join('');
-  return`<div class="home"><div class="topbar"><div class="logo-row"><div class="sun">☀️</div><div><div class="co-name">${esc(cfg.companyName)}</div><div class="co-sub">Staff Time Clock</div></div></div><button class="btn btn-g btn-sm" data-a="go-al">⚙ Admin</button></div>
+  return`<div class="home"><div class="topbar"><div class="logo-row"><div class="sun">☀️</div><div><div class="co-name">${esc(cfg.companyName)}</div><div class="co-sub">Staff Time Clock</div></div></div><div style="display:flex;gap:7px"><button class="btn btn-y btn-sm" data-a="go-board-home">📣 Board</button><button class="btn btn-g btn-sm" data-a="go-al">⚙ Admin</button></div></div>
   <div class="clock-banner"><div class="clock-time" id="lc">${clockStr()}</div><div class="clock-date">${dateStr()}</div></div>
   <div class="grid-instr">Tap your name to clock in or out</div>
   <div class="emp-grid">${cards}</div></div>`;
@@ -538,10 +538,9 @@ function Emp(){
   <div class="note-box"><label>📝 Optional note with this punch</label><textarea id="clock-note" placeholder="e.g. Clocking in a few minutes late — car trouble." rows="2"></textarea></div>
   <button class="ck-btn ${active?'out':'in'}" data-a="toggle-clock">${active?'⏹ Clock Out':'▶ Clock In'}</button>
   ${active?`<button class="btn ${onBreak?'btn-b':'btn-g'} btn-full" style="margin-bottom:13px;padding:13px 16px;border-radius:14px" data-a="${onBreak?'end-break':'start-break'}">${onBreak?'▶ End Break':'⏸ Start Break'}</button>`:''}
-  \${weeklyAlert(wkH)}
+  ${weeklyAlert(wkH)}
   <div class="stats-row"><div class="stat-box"><div class="stat-lbl">Today</div><div class="stat-val">${fH(todH)}h</div></div><div class="stat-box"><div class="stat-lbl">This Week</div><div class="stat-val">${fH(wkH)}h</div></div><div class="stat-box pto"><div class="stat-lbl">PTO Left</div><div class="stat-val">${fH(emp.ptoBalance||0)}h</div></div></div>
-  <div style="display:flex;gap:8px;margin-bottom:8px"><button class="btn btn-g btn-sm btn-full" data-a="go-timecards">🗂 View All Timecards</button><button class="btn btn-g btn-sm btn-full" data-a="go-tor">🌴 Request Time Off${pendTOR>0?` (${pendTOR} pending)`:''}</button></div>
-  <div style="margin-bottom:13px"><button class="btn btn-y btn-sm btn-full" data-a="go-board">📣 Staff Board</button></div>
+  <div style="display:flex;gap:8px;margin-bottom:13px"><button class="btn btn-g btn-sm btn-full" data-a="go-timecards">🗂 View All Timecards</button><button class="btn btn-g btn-sm btn-full" data-a="go-tor">🌴 Request Time Off${pendTOR>0?` (${pendTOR} pending)`:''}</button></div>
   <div class="card"><div class="recent-ttl">Recent Shifts — tap 💬 to message admin</div>${recentRows}</div>
   ${noteModalHTML}${reminderHTML}</div>`;
 }
@@ -592,7 +591,9 @@ const BOARD_TAGS=[
 ];
 
 function BoardScreen(){
-  const emp=DB.emps().find(e=>e.id===S.selEmp);if(!emp){S.screen='home';return Home();}
+  const emp=DB.emps().find(e=>e.id===S.selEmp)||null;
+  // Board is accessible from home (read-only) and from emp dash (can post)
+  const canPost=!!emp;
   const posts=DB.boardPosts();
   const selTag=S.boardTag||'general';
 
@@ -602,7 +603,7 @@ function BoardScreen(){
   const avColors=['#e0f6fc','#fde9f1','#fff8d6','#e6f5ea','#fff3e0'];
   const avColor=avColors[emp.name.charCodeAt(0)%avColors.length];
 
-  const newForm=S.boardCompose?`<div class="board-new-form">
+  const newForm=canPost&&S.boardCompose?`<div class="board-new-form">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px">
       <div class="board-post-av" style="background:${avColor}">${ini}</div>
       <div style="font-weight:800;font-size:14px;color:var(--text)">${esc(emp.name)}</div>
@@ -611,7 +612,9 @@ function BoardScreen(){
     <div class="field"><textarea id="board-msg" placeholder="${selTag==='shoutout'?'Give someone a shoutout!':selTag==='kudos'?'Recognize a great job!':selTag==='announce'?'Share an announcement with the team…':'Say something to the team…'}" rows="3" style="font-size:15px"></textarea></div>
     <div style="display:flex;gap:8px"><button class="btn btn-y" data-a="board-post">Post 📣</button><button class="btn btn-g" data-a="board-cancel">Cancel</button></div>
   </div>`
-  :`<button class="btn btn-y btn-full" data-a="board-compose" style="margin-bottom:14px">✏️ Write a Post</button>`;
+  :`${canPost
+    ?'<button class="btn btn-y btn-full" data-a="board-compose" style="margin-bottom:14px">✏️ Write a Post</button>'
+    :'<div style="background:var(--yw-lt);border:1.5px solid var(--yellow);border-radius:12px;padding:11px 15px;margin-bottom:14px;text-align:center;font-size:13px;font-weight:700;color:var(--yw-dk)">← Go back and tap your name to write a post</div>'}`;
 
   const postHTML=posts.length===0
     ?`<div style="text-align:center;padding:30px 20px;color:var(--muted)"><div style="font-size:36px;margin-bottom:10px">📣</div><div style="font-weight:600">Nothing posted yet.<br>Be the first to say something!</div></div>`
@@ -636,7 +639,7 @@ function BoardScreen(){
     }).join('');
 
   return`<div class="emp-dash">
-    <div class="emp-hdr"><button class="bk-btn" data-a="go-emp">←</button><div><div class="emp-greet">Bright Beginnings</div><div class="emp-name">Staff Board 📣</div></div></div>
+    <div class="emp-hdr"><button class="bk-btn" data-a="${canPost?'go-emp':'go-home'}">←</button><div><div class="emp-greet">Bright Beginnings</div><div class="emp-name">Staff Board 📣</div></div></div>
     ${newForm}
     <div style="font-family:var(--display);font-size:16px;color:var(--text);margin-bottom:10px">Recent Posts</div>
     ${postHTML}
@@ -1257,6 +1260,7 @@ function act(a,d={}){
 
     // ── Community Board actions ───────────────────────────────────────────────
     case 'go-board': set({screen:'board',boardCompose:false,boardTag:'general'}); break;
+    case 'go-board-home': set({screen:'board',boardCompose:false,boardTag:'general'}); break;
     case 'board-compose': set({boardCompose:true}); break;
     case 'board-cancel': set({boardCompose:false,boardTag:'general'}); break;
     case 'board-tag': set({boardTag:d.tag}); break;
