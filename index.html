@@ -1,18 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
 <title>Bright Beginnings · TimeClock</title>
-<meta name="theme-color" content="#3bbde0"/>
-<meta name="apple-mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-title" content="TimeClock"/>
-<link rel="manifest" href="manifest.webmanifest"/>
-<link rel="icon" type="image/svg+xml" href="icon.svg"/>
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
-<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-<link rel="apple-touch-icon" href="icon-192.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fredoka+One&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
 <style>
 /* ── TOUCH SUPPORT ── */
@@ -213,36 +204,6 @@ label{font-size:12px;color:var(--text2);font-weight:800;display:block;margin-bot
 .loading-text{font-family:var(--display);font-size:22px;color:var(--text);margin-top:20px}
 .loading-sub{font-size:13px;color:var(--muted);font-weight:600;margin-top:6px}
 .loading-err{font-size:13px;color:var(--red);font-weight:700;margin-top:14px;text-align:center;max-width:300px;line-height:1.5}
-
-/* ── WEEKLY HOURS ALERT ── */
-.wk-alert{border-radius:14px;padding:12px 15px;margin-bottom:12px;border:2px solid;display:flex;align-items:flex-start;gap:10px}
-.wk-alert.warn{background:#fff8e1;border-color:#f9c522}
-.wk-alert.danger{background:#fff3e0;border-color:var(--ot)}
-.wk-alert.over{background:var(--rd-lt);border-color:var(--red)}
-.wk-alert-icon{font-size:22px;flex-shrink:0;margin-top:1px}
-.wk-alert-ttl{font-weight:800;font-size:13px;margin-bottom:2px}
-.wk-alert.warn .wk-alert-ttl{color:var(--yw-dk)}
-.wk-alert.danger .wk-alert-ttl{color:var(--ot)}
-.wk-alert.over .wk-alert-ttl{color:var(--rd-dk)}
-.wk-alert-sub{font-size:12px;font-weight:600;color:var(--text2)}
-
-/* ── COMMUNITY BOARD ── */
-.board-post{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:14px 15px;margin-bottom:10px;box-shadow:var(--sh)}
-.board-post-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:7px}
-.board-post-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;flex-shrink:0}
-.board-post-meta{flex:1}
-.board-post-name{font-weight:800;font-size:13px;color:var(--text)}
-.board-post-ts{font-size:11px;color:var(--muted);font-weight:600;margin-top:1px}
-.board-post-body{font-size:14px;color:var(--text);line-height:1.55;word-break:break-word}
-.board-post-tag{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:100px;font-size:11px;font-weight:800;margin-bottom:7px}
-.tag-shoutout{background:#fff0f6;color:#b94f7a}
-.tag-announce{background:var(--bl-lt);color:var(--bl-dk)}
-.tag-general{background:var(--surface2);color:var(--text2)}
-.tag-kudos{background:#fffbe6;color:#a0760a}
-.board-new-form{background:var(--surface);border:2px solid var(--blue);border-radius:16px;padding:15px;margin-bottom:14px;box-shadow:var(--sh)}
-.board-tags{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px}
-.tag-btn{padding:5px 13px;border-radius:100px;font-size:12px;font-weight:800;border:2px solid transparent;cursor:pointer;transition:all .12s;touch-action:manipulation}
-.tag-btn.active{border-color:currentColor}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
@@ -261,78 +222,6 @@ function fDateLong(d){const x=new Date(d);return`${['Sunday','Monday','Tuesday',
 function toLocal(iso){const d=new Date(iso);return`${d.getFullYear()}-${fmt(d.getMonth()+1)}-${fmt(d.getDate())}T${fmt(d.getHours())}:${fmt(d.getMinutes())}`;}
 function isoDate(d){const x=new Date(d);return`${x.getFullYear()}-${fmt(x.getMonth()+1)}-${fmt(x.getDate())}`;}
 const fH=h=>(h||0).toFixed(2);
-const IDLE_TIMEOUT_MS=20000;
-let _idleTimer=null;
-let _idleBound=false;
-function localDayEndISO(d){const x=new Date(d);const eod=new Date(x.getFullYear(),x.getMonth(),x.getDate(),23,59,0,0);return eod.toISOString();}
-function addFlag(entry,flag){const flags=Array.isArray(entry.flags)?entry.flags.slice():[];if(!flags.includes(flag))flags.push(flag);entry.flags=flags;}
-function entryHours(entry){if(!entry?.clockIn||!entry?.clockOut)return 0;return (new Date(entry.clockOut)-new Date(entry.clockIn))/3600000;}
-function breakHours(entry,nowTs=null){
-  if(!Array.isArray(entry?.breaks))return 0;
-  return entry.breaks.reduce((s,b)=>{
-    if(!b?.start)return s;
-    const st=new Date(b.start);
-    const en=b.end?new Date(b.end):(nowTs?new Date(nowTs):new Date());
-    const h=(en-st)/3600000;
-    return s+(h>0?h:0);
-  },0);
-}
-function workedHours(entry,nowTs=null){
-  if(!entry?.clockIn)return 0;
-  const endTs=entry.clockOut?new Date(entry.clockOut):(nowTs?new Date(nowTs):new Date());
-  const startTs=new Date(entry.clockIn);
-  const total=(endTs-startTs)/3600000;
-  if(total<=0)return 0;
-  return Math.max(0,total-breakHours(entry,nowTs));
-}
-function isOnBreak(entry){
-  if(!entry||!Array.isArray(entry.breaks)||entry.breaks.length===0)return false;
-  const last=entry.breaks[entry.breaks.length-1];
-  return !!(last&&last.start&&!last.end);
-}
-function getEntryFlags(entry){
-  const flags=new Set(Array.isArray(entry?.flags)?entry.flags:[]);
-  if(entry?.autoClosed)flags.add('auto_clockout');
-  const hrs=workedHours(entry);
-  const raw=entryHours(entry);
-  if(entry?.clockOut&&hrs>12)flags.add('long_shift');
-  if(entry?.clockOut&&raw<0)flags.add('invalid_duration');
-  if(entry?.clockOut&&hrs>6&&breakHours(entry)===0)flags.add('missing_break');
-  return [...flags];
-}
-function hasUnresolvedFlags(entry){return getEntryFlags(entry).length>0&&!entry.flagReviewed;}
-function flagLabel(f){
-  return ({
-    auto_clockout:'Auto 11:59',
-    long_shift:'Long Shift',
-    invalid_duration:'Invalid Time',
-    missing_break:'No Break Logged',
-    manual_edit:'Manual Edit'
-  })[f]||f;
-}
-function shouldShowMissedClockReminder(entry){
-  if(!entry||!entry.autoClosed||entry.employeeReminderAck)return false;
-  if(!entry.employeeReminderSnoozeAt)return true;
-  return isoDate(entry.employeeReminderSnoozeAt)!==isoDate(new Date());
-}
-function isIdleProtectedScreen(){
-  return ['pin','emp','etimecards','tor','admin'].includes(S.screen);
-}
-function resetIdleTimer(){
-  clearTimeout(_idleTimer);
-  if(!isIdleProtectedScreen())return;
-  _idleTimer=setTimeout(()=>{
-    if(!isIdleProtectedScreen())return;
-    clearInterval(window._clk);
-    set({screen:'home',selEmp:null,pin:'',editEntryId:null,adjPTO:null,addEmp:false,editEmpId:null,noteModal:null,addTOReq:false,selCalDay:null,torSelDay:null});
-    toast('Returned to home after 20 seconds of inactivity.','error');
-  },IDLE_TIMEOUT_MS);
-}
-function bindIdleTracking(){
-  if(_idleBound)return;
-  _idleBound=true;
-  ['click','touchstart','keydown'].forEach(evt=>document.addEventListener(evt,resetIdleTimer,{passive:true}));
-}
 function clockStr(){const n=new Date(),h=n.getHours(),m=n.getMinutes(),s=n.getSeconds();return`${fmt(h%12||12)}:${fmt(m)}:${fmt(s)} ${h>=12?'PM':'AM'}`;}
 function dateStr(){const n=new Date();return`${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][n.getDay()]}, ${['January','February','March','April','May','June','July','August','September','October','November','December'][n.getMonth()]} ${n.getDate()}, ${n.getFullYear()}`;}
 function startDay(d){const x=new Date(d);x.setHours(0,0,0,0);return x;}
@@ -354,8 +243,8 @@ firebase.initializeApp(firebaseConfig);
 const fdb = firebase.database();
 
 // ─── LOCAL CACHE (filled by Firebase listeners) ───────────────────────────────
-const COLS = ['settings','employees','entries','pto_log','messages','to_reqs','board_posts'];
-const _cache = { board_posts:{}, settings:{}, employees:{}, entries:{}, pto_log:{}, messages:{}, to_reqs:{} };
+const COLS = ['settings','employees','entries','pto_log','messages','to_reqs'];
+const _cache = { settings:{}, employees:{}, entries:{}, pto_log:{}, messages:{}, to_reqs:{} };
 const _ready = new Set();
 let _fbError = false;
 
@@ -379,31 +268,6 @@ COLS.forEach(col => {
 });
 
 function fbReady(){ return COLS.every(c => _ready.has(c)); }
-
-function autoCloseStaleOpenEntries(){
-  const entries=DB.entries();
-  if(entries.length===0)return;
-  const today=startDay(new Date());
-  let changed=false;
-  entries.forEach(e=>{
-    if(e.clockOut||!e.clockIn)return;
-    const inTs=new Date(e.clockIn);
-    if(startDay(inTs)<today){
-      e.clockOut=localDayEndISO(inTs);
-      if(Array.isArray(e.breaks)&&e.breaks.length){
-        const lb=e.breaks[e.breaks.length-1];
-        if(lb&&lb.start&&!lb.end)lb.end=e.clockOut;
-      }
-      e.autoClosed=true;
-      e.autoCloseReason='midnight';
-      e.autoClosedAt=new Date().toISOString();
-      e.flagReviewed=false;
-      addFlag(e,'auto_clockout');
-      changed=true;
-    }
-  });
-  if(changed)DB.saveEntries(entries);
-}
 
 // Write helpers — update cache immediately, then push to Firebase
 function fbSet(col, arr){
@@ -431,8 +295,6 @@ const DB = {
   saveMsgs(arr){ fbSet('messages', arr); },
   toReqs(){ return toArr(_cache.to_reqs); },
   saveToReqs(arr){ fbSet('to_reqs', arr); },
-  boardPosts(){ return toArr(_cache.board_posts).sort((a,b)=>new Date(b.ts)-new Date(a.ts)); },
-  saveBoardPosts(arr){ fbSet('board_posts', arr); },
 };
 function getActive(empId){return DB.entries().find(e=>e.employeeId===empId&&!e.clockOut)||null;}
 function getMsgs(entryId){return DB.msgs().filter(m=>m.entryId===entryId).sort((a,b)=>new Date(a.ts)-new Date(b.ts));}
@@ -441,7 +303,7 @@ function calcHours(empId,start,end){
     if(e.employeeId!==empId||!e.clockOut)return false;
     const d=new Date(e.clockIn);
     if(start&&d<start)return false;if(end&&d>end)return false;return true;
-  }).reduce((s,e)=>s+workedHours(e),0);
+  }).reduce((s,e)=>s+(new Date(e.clockOut)-new Date(e.clockIn))/3600000,0);
 }
 
 // ─── STATE ───────────────────────────────────────────────────────────────────
@@ -449,12 +311,10 @@ let S={
   screen:'home',selEmp:null,pin:'',pinErr:false,
   tab:'overview',editEmpId:null,addEmp:false,
   editEntryId:null,adjPTO:null,noteModal:null,
-  fEmp:'all',fStart:'',fEnd:'',fFlag:'all',
-  ehStart:'',ehEnd:'',
+  fEmp:'all',fStart:'',fEnd:'',
   calYear:new Date().getFullYear(),calMonth:new Date().getMonth(),
   selCalDay:null,addTOReq:false,
   torCalYear:new Date().getFullYear(),torCalMonth:new Date().getMonth(),torSelDay:null,
-  boardCompose:false,boardTag:'general',
   toast:null,_tt:null,
 };
 function set(p){Object.assign(S,p);render();}
@@ -474,7 +334,7 @@ function Home(){
   const cards=emps.length===0
     ?`<div style="grid-column:1/-1;text-align:center;padding:40px 20px;color:var(--muted)"><div style="font-size:34px;margin-bottom:10px">👋</div><p>No staff yet. Tap <strong>Admin</strong> to add staff.</p></div>`
     :emps.map(e=>{const a=getActive(e.id);const i=e.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);return`<div class="emp-card ${a?'cin':''}" data-a="sel-emp" data-emp="${e.id}"><div class="emp-av">${i}</div><div class="emp-card-name">${esc(e.name)}</div><div class="emp-card-st">${a?'● CLOCKED IN':'○ CLOCKED OUT'}</div></div>`;}).join('');
-  return`<div class="home"><div class="topbar"><div class="logo-row"><div class="sun">☀️</div><div><div class="co-name">${esc(cfg.companyName)}</div><div class="co-sub">Staff Time Clock</div></div></div><div style="display:flex;gap:7px"><button class="btn btn-y btn-sm" data-a="go-board-home">📣 Board</button><button class="btn btn-g btn-sm" data-a="go-al">⚙ Admin</button></div></div>
+  return`<div class="home"><div class="topbar"><div class="logo-row"><div class="sun">☀️</div><div><div class="co-name">${esc(cfg.companyName)}</div><div class="co-sub">Staff Time Clock</div></div></div><button class="btn btn-g btn-sm" data-a="go-al">⚙ Admin</button></div>
   <div class="clock-banner"><div class="clock-time" id="lc">${clockStr()}</div><div class="clock-date">${dateStr()}</div></div>
   <div class="grid-instr">Tap your name to clock in or out</div>
   <div class="emp-grid">${cards}</div></div>`;
@@ -496,36 +356,19 @@ function Pin(){
 // ════════════════════════════════════════════════════════════════════════
 // EMPLOYEE DASHBOARD
 // ════════════════════════════════════════════════════════════════════════
-
-// ─── WEEKLY HOURS ALERT ──────────────────────────────────────────────────────
-function weeklyAlert(wkH){
-  if(wkH>=40){
-    return`<div class="wk-alert over"><div class="wk-alert-icon">🚨</div><div><div class="wk-alert-ttl">Overtime reached — ${fH(wkH)}h this week</div><div class="wk-alert-sub">You are over 40 hours. Please notify your manager.</div></div></div>`;
-  } else if(wkH>=36){
-    return`<div class="wk-alert danger"><div class="wk-alert-icon">⚠️</div><div><div class="wk-alert-ttl">Almost at 40 hours — ${fH(wkH)}h this week</div><div class="wk-alert-sub">Only ${fH(40-wkH)}h left before overtime. Heads up!</div></div></div>`;
-  } else if(wkH>=32){
-    return`<div class="wk-alert warn"><div class="wk-alert-icon">🕐</div><div><div class="wk-alert-ttl">Approaching 40 hours — ${fH(wkH)}h this week</div><div class="wk-alert-sub">${fH(40-wkH)}h remaining before overtime this week.</div></div></div>`;
-  }
-  return '';
-}
-
 function Emp(){
   const emp=DB.emps().find(e=>e.id===S.selEmp);if(!emp){S.screen='home';return Home();}
   const active=getActive(emp.id);const now=new Date();
   let todH=calcHours(emp.id,startDay(now),null);
   let wkH=calcHours(emp.id,startWeek(now),null);
-  const onBreak=!!(active&&isOnBreak(active));
-  if(active){const r=workedHours(active,now.toISOString());todH+=r;wkH+=r;}
+  if(active){const r=(now-new Date(active.clockIn))/3600000;todH+=r;wkH+=r;}
   const entries=DB.entries().filter(e=>e.employeeId===emp.id&&e.clockOut).sort((a,b)=>new Date(b.clockIn)-new Date(a.clockIn)).slice(0,8);
   // Pending time-off requests
   const pendTOR=DB.toReqs().filter(r=>r.empId===emp.id&&r.status==='pending').length;
-  const reminderEntry=DB.entries()
-    .filter(e=>e.employeeId===emp.id&&shouldShowMissedClockReminder(e))
-    .sort((a,b)=>new Date(b.clockIn)-new Date(a.clockIn))[0]||null;
   const recentRows=entries.length===0
     ?`<div style="color:var(--muted);font-size:13px;padding:8px 0;font-weight:600">No recent shifts yet 🌟</div>`
     :entries.map(e=>{
-      const dur=workedHours(e);
+      const dur=(new Date(e.clockOut)-new Date(e.clockIn))/3600000;
       const {reg,ot}=splitOT(dur);
       const msgs=getMsgs(e.id);
       const latestNote=e.note||(msgs.length>0?msgs[msgs.length-1].text:'');
@@ -533,37 +376,14 @@ function Emp(){
       return`<div class="e-row"><div class="e-top"><div><div class="e-date">${fDate(e.clockIn)}</div><div class="e-times">${fTime(e.clockIn)} – ${fTime(e.clockOut)}</div></div><div class="e-right"><span class="e-hrs">${fH(reg)}h</span>${ot>0?`<span class="e-ot">+${fH(ot)}OT</span>`:''}<button class="btn btn-g btn-sm" style="padding:3px 8px;font-size:10px;border-radius:7px" data-a="open-note" data-entry="${e.id}">💬</button></div></div>${notePill}</div>`;
     }).join('');
   const noteModalHTML=S.noteModal?EmpNoteModal():'';
-  const reminderHTML=reminderEntry?EmpAutoReminderModal(reminderEntry):'';
   return`<div class="emp-dash"><div class="emp-hdr"><button class="bk-btn" data-a="go-home">←</button><div><div class="emp-greet">Welcome back</div><div class="emp-name">${esc(emp.name)}</div></div></div>
-  <div class="status-card ${active?'cin':''}"><div class="st-lbl">Current Status</div><div class="st-val">${active?(onBreak?'⏸ On Break':'● Clocked In'):'○ Clocked Out'}</div>${active?`<div class="st-since">${onBreak?'Break started':'Since'} ${fTime(onBreak?active.breaks[active.breaks.length-1].start:active.clockIn)}</div>`:''}</div>
+  <div class="status-card ${active?'cin':''}"><div class="st-lbl">Current Status</div><div class="st-val">${active?'● Clocked In':'○ Clocked Out'}</div>${active?`<div class="st-since">Since ${fTime(active.clockIn)}</div>`:''}</div>
   <div class="note-box"><label>📝 Optional note with this punch</label><textarea id="clock-note" placeholder="e.g. Clocking in a few minutes late — car trouble." rows="2"></textarea></div>
   <button class="ck-btn ${active?'out':'in'}" data-a="toggle-clock">${active?'⏹ Clock Out':'▶ Clock In'}</button>
-  ${active?`<button class="btn ${onBreak?'btn-b':'btn-g'} btn-full" style="margin-bottom:13px;padding:13px 16px;border-radius:14px" data-a="${onBreak?'end-break':'start-break'}">${onBreak?'▶ End Break':'⏸ Start Break'}</button>`:''}
-  ${weeklyAlert(wkH)}
   <div class="stats-row"><div class="stat-box"><div class="stat-lbl">Today</div><div class="stat-val">${fH(todH)}h</div></div><div class="stat-box"><div class="stat-lbl">This Week</div><div class="stat-val">${fH(wkH)}h</div></div><div class="stat-box pto"><div class="stat-lbl">PTO Left</div><div class="stat-val">${fH(emp.ptoBalance||0)}h</div></div></div>
-  <div style="display:flex;gap:8px;margin-bottom:13px"><button class="btn btn-g btn-sm btn-full" data-a="go-timecards">🗂 View All Timecards</button><button class="btn btn-g btn-sm btn-full" data-a="go-tor">🌴 Request Time Off${pendTOR>0?` (${pendTOR} pending)`:''}</button></div>
+  <div style="display:flex;gap:8px;margin-bottom:13px"><button class="btn btn-g btn-sm btn-full" data-a="go-tor">🌴 Request Time Off${pendTOR>0?` (${pendTOR} pending)`:''}</button></div>
   <div class="card"><div class="recent-ttl">Recent Shifts — tap 💬 to message admin</div>${recentRows}</div>
-  ${noteModalHTML}${reminderHTML}</div>`;
-}
-
-function EmpTimecards(){
-  const emp=DB.emps().find(e=>e.id===S.selEmp);if(!emp){S.screen='home';return Home();}
-  let entries=DB.entries().filter(e=>e.employeeId===emp.id&&e.clockOut);
-  if(S.ehStart)entries=entries.filter(e=>new Date(e.clockIn)>=new Date(S.ehStart));
-  if(S.ehEnd){const en=new Date(S.ehEnd);en.setHours(23,59,59,999);entries=entries.filter(e=>new Date(e.clockIn)<=en);}
-  entries=entries.sort((a,b)=>new Date(b.clockIn)-new Date(a.clockIn));
-  const totals=entries.reduce((s,e)=>{const h=workedHours(e);const x=splitOT(h);s.total+=h;s.reg+=x.reg;s.ot+=x.ot;return s;},{total:0,reg:0,ot:0});
-  const rows=entries.length===0
-    ?`<div style="color:var(--muted);font-size:13px;padding:14px;text-align:center;font-weight:600">No timecards in this date range.</div>`
-    :entries.map(e=>{
-      const h=workedHours(e),b=breakHours(e),x=splitOT(h);
-      const fl=getEntryFlags(e);
-      return`<div class="e-row"><div class="e-top"><div><div class="e-date">${fDateLong(e.clockIn)}</div><div class="e-times">${fTime(e.clockIn)} – ${fTime(e.clockOut)}</div></div><div class="e-right"><span class="e-hrs">${fH(x.reg)}h</span>${x.ot>0?`<span class="e-ot">+${fH(x.ot)}OT</span>`:''}</div></div><div style="font-size:11px;color:var(--text2);margin-top:3px;font-weight:700">Worked: ${fH(h)}h${b>0?` · Breaks: ${fH(b)}h`:''}</div>${fl.length>0?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:5px">${fl.map(f=>`<span class="badge ${e.flagReviewed?'bm':'bo'}">${esc(flagLabel(f))}</span>`).join('')}</div>`:''}</div>`;
-    }).join('');
-  return`<div class="emp-dash"><div class="emp-hdr"><button class="bk-btn" data-a="go-emp">←</button><div><div class="emp-greet">${esc(emp.name)}</div><div class="emp-name">My Timecards</div></div></div>
-  <div class="card" style="margin-bottom:11px"><div class="filters" style="margin-bottom:9px"><input type="date" id="ehs" value="${S.ehStart}" data-action="ehStart"/><input type="date" id="ehe" value="${S.ehEnd}" data-action="ehEnd"/><button class="btn btn-g btn-sm" data-a="clear-eh">Clear</button></div>
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"><div class="stat-box"><div class="stat-lbl">Regular</div><div class="stat-val">${fH(totals.reg)}h</div></div><div class="stat-box"><div class="stat-lbl">OT</div><div class="stat-val">${fH(totals.ot)}h</div></div><div class="stat-box"><div class="stat-lbl">Total</div><div class="stat-val">${fH(totals.total)}h</div></div></div></div>
-  <div class="card"><div class="recent-ttl">Complete Timecard History (${entries.length})</div>${rows}</div></div>`;
+  ${noteModalHTML}</div>`;
 }
 
 function EmpNoteModal(){
@@ -571,109 +391,6 @@ function EmpNoteModal(){
   const msgs=getMsgs(entry.id);
   const bubbles=msgs.length===0?`<div style="color:var(--muted);font-size:12px;font-weight:600;padding:4px 0">No messages on this shift yet.</div>`:msgs.map(m=>`<div class="msg-bub ${m.author==='admin'?'msg-admin':'msg-staff'}"><div class="msg-lbl">${m.author==='admin'?'🔑 Admin':'👤 '+esc(m.authorName)}</div>${esc(m.text)}<div class="msg-ts">${fDate(m.ts)} ${fTime(m.ts)}</div></div>`).join('');
   return`<div class="modal-overlay" data-a="bg-close"><div class="modal"><h2>💬 Shift Notes</h2><div style="font-size:11px;color:var(--text2);margin-bottom:11px;font-weight:600">${fDate(entry.clockIn)} · ${fTime(entry.clockIn)} – ${fTime(entry.clockOut||'')}</div><div style="max-height:170px;overflow-y:auto;margin-bottom:13px">${bubbles}</div><div class="field"><label>Send a note to Admin</label><textarea id="nm-msg" placeholder="e.g. I forgot to clock out at noon — please fix." rows="2"></textarea></div><div style="display:flex;gap:8px"><button class="btn btn-b" data-a="send-emp-note">Send 📤</button><button class="btn btn-g" data-a="close-note">Close</button></div></div></div>`;
-}
-
-function EmpAutoReminderModal(entry){
-  return`<div class="modal-overlay"><div class="modal"><h2>⏰ Missed Clock-Out Reminder</h2>
-  <div style="font-size:12px;color:var(--text2);margin-bottom:10px;font-weight:700">We auto clocked you out at 11:59 PM on <strong>${fDateLong(entry.clockIn)}</strong> because you were still clocked in.</div>
-  <div style="background:var(--yw-lt);border:1.5px solid var(--yellow);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--yw-dk);font-weight:700">Please tell admin what time you actually left and add a short note.</div>
-  <div class="field"><label>What time did you leave? (optional)</label><input type="time" id="mr-time"/></div>
-  <div class="field"><label>Note to admin</label><textarea id="mr-note" placeholder="e.g. I left at 5:12 PM and forgot to clock out." rows="2"></textarea></div>
-  <div style="display:flex;gap:8px"><button class="btn btn-b" data-a="submit-missed-reminder" data-entry="${entry.id}">Send to Admin</button><button class="btn btn-g" data-a="dismiss-missed-reminder" data-entry="${entry.id}">Remind me later</button></div></div></div>`;
-}
-
-
-// ─── COMMUNITY BOARD ─────────────────────────────────────────────────────────
-const BOARD_TAGS=[
-  {id:'general', label:'💬 General',  cls:'tag-general'},
-  {id:'shoutout',label:'🙌 Shoutout', cls:'tag-shoutout'},
-  {id:'kudos',   label:'⭐ Kudos',    cls:'tag-kudos'},
-  {id:'announce',label:'📢 Announce', cls:'tag-announce'},
-];
-
-function BoardScreen(){
-  const emp=DB.emps().find(e=>e.id===S.selEmp)||null;
-  // Board is accessible from home (read-only) and from emp dash (can post)
-  const canPost=!!emp;
-  const posts=DB.boardPosts();
-  const selTag=S.boardTag||'general';
-
-  const tagBtns=BOARD_TAGS.map(t=>`<button class="tag-btn ${t.cls} ${selTag===t.id?'active':''}" data-a="board-tag" data-tag="${t.id}">${t.label}</button>`).join('');
-
-  const ini=emp.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-  const avColors=['#e0f6fc','#fde9f1','#fff8d6','#e6f5ea','#fff3e0'];
-  const avColor=avColors[emp.name.charCodeAt(0)%avColors.length];
-
-  const newForm=canPost&&S.boardCompose?`<div class="board-new-form">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px">
-      <div class="board-post-av" style="background:${avColor}">${ini}</div>
-      <div style="font-weight:800;font-size:14px;color:var(--text)">${esc(emp.name)}</div>
-    </div>
-    <div class="board-tags">${tagBtns}</div>
-    <div class="field"><textarea id="board-msg" placeholder="${selTag==='shoutout'?'Give someone a shoutout!':selTag==='kudos'?'Recognize a great job!':selTag==='announce'?'Share an announcement with the team…':'Say something to the team…'}" rows="3" style="font-size:15px"></textarea></div>
-    <div style="display:flex;gap:8px"><button class="btn btn-y" data-a="board-post">Post 📣</button><button class="btn btn-g" data-a="board-cancel">Cancel</button></div>
-  </div>`
-  :`${canPost
-    ?'<button class="btn btn-y btn-full" data-a="board-compose" style="margin-bottom:14px">✏️ Write a Post</button>'
-    :'<div style="background:var(--yw-lt);border:1.5px solid var(--yellow);border-radius:12px;padding:11px 15px;margin-bottom:14px;text-align:center;font-size:13px;font-weight:700;color:var(--yw-dk)">← Go back and tap your name to write a post</div>'}`;
-
-  const postHTML=posts.length===0
-    ?`<div style="text-align:center;padding:30px 20px;color:var(--muted)"><div style="font-size:36px;margin-bottom:10px">📣</div><div style="font-weight:600">Nothing posted yet.<br>Be the first to say something!</div></div>`
-    :posts.map(p=>{
-      const postEmp=DB.emps().find(e=>e.id===p.empId);
-      const pIni=(p.empName||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-      const pColor=avColors[(p.empName||'?').charCodeAt(0)%avColors.length];
-      const tag=BOARD_TAGS.find(t=>t.id===p.tag)||BOARD_TAGS[0];
-      const canDel=p.empId===emp.id;
-      return`<div class="board-post">
-        <div class="board-post-hdr">
-          <div class="board-post-av" style="background:${pColor}">${pIni}</div>
-          <div class="board-post-meta">
-            <div class="board-post-name">${esc(p.empName||'Staff')}</div>
-            <div class="board-post-ts">${fDate(p.ts)} at ${fTime(p.ts)}</div>
-          </div>
-          ${canDel?`<button class="btn btn-g btn-sm" style="padding:3px 9px;font-size:11px" data-a="board-del" data-pid="${p.id}">✕</button>`:''}
-        </div>
-        <span class="board-post-tag ${tag.cls}">${tag.label}</span>
-        <div class="board-post-body">${esc(p.body)}</div>
-      </div>`;
-    }).join('');
-
-  return`<div class="emp-dash">
-    <div class="emp-hdr"><button class="bk-btn" data-a="${canPost?'go-emp':'go-home'}">←</button><div><div class="emp-greet">Bright Beginnings</div><div class="emp-name">Staff Board 📣</div></div></div>
-    ${newForm}
-    <div style="font-family:var(--display);font-size:16px;color:var(--text);margin-bottom:10px">Recent Posts</div>
-    ${postHTML}
-  </div>`;
-}
-
-// Admin board view (read + moderate)
-function AdminBoard(){
-  const emps=DB.emps();
-  const posts=DB.boardPosts();
-  const postHTML=posts.length===0
-    ?`<div style="text-align:center;padding:30px;color:var(--muted);font-weight:600">No posts yet.</div>`
-    :posts.map(p=>{
-      const tag=BOARD_TAGS.find(t=>t.id===p.tag)||BOARD_TAGS[0];
-      const avColors=['#e0f6fc','#fde9f1','#fff8d6','#e6f5ea','#fff3e0'];
-      const pColor=avColors[(p.empName||'?').charCodeAt(0)%avColors.length];
-      const pIni=(p.empName||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-      return`<div class="board-post">
-        <div class="board-post-hdr">
-          <div class="board-post-av" style="background:${pColor}">${pIni}</div>
-          <div class="board-post-meta">
-            <div class="board-post-name">${esc(p.empName||'Staff')}</div>
-            <div class="board-post-ts">${fDate(p.ts)} at ${fTime(p.ts)}</div>
-          </div>
-          <button class="btn btn-r btn-sm" style="padding:3px 9px;font-size:11px" data-a="board-admin-del" data-pid="${p.id}">🗑 Remove</button>
-        </div>
-        <span class="board-post-tag ${tag.cls}">${tag.label}</span>
-        <div class="board-post-body">${esc(p.body)}</div>
-      </div>`;
-    }).join('');
-  return`<div class="sec-hdr"><div class="sec-ttl">Staff Board</div><span class="badge bb">${posts.length} post${posts.length!==1?'s':''}</span></div>
-  <p style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:12px">Staff posts appear here. You can remove any post that is inappropriate.</p>
-  ${postHTML}`;
 }
 
 // Time-off request from employee view
@@ -806,11 +523,10 @@ function Admin(){
     {id:'pto',label:'🌴 PTO'},
     {id:'tor',label:`📅 Time Off${pendTOR>0?` <span style="background:var(--pink);color:#fff;border-radius:100px;padding:1px 6px;font-size:10px">${pendTOR}</span>`:''}`},
     {id:'notes',label:`💬 Notes${unread>0?` <span style="background:var(--pink);color:#fff;border-radius:100px;padding:1px 6px;font-size:10px">${unread}</span>`:''}`},
-    {id:'board',label:'📣 Staff Board'},
     {id:'settings',label:'⚙ Settings'},
   ];
   const tabBar=tabs.map(t=>`<div class="tab-it ${S.tab===t.id?'active':''}" data-a="tab" data-tab="${t.id}">${t.label}</div>`).join('');
-  const content={overview:AOverview,staff:AStaff,time:ATime,pto:APTO,tor:ATOR,notes:ANotes,board:AdminBoard,settings:ASettings}[S.tab]?.()||'';
+  const content={overview:AOverview,staff:AStaff,time:ATime,pto:APTO,tor:ATOR,notes:ANotes,settings:ASettings}[S.tab]?.()||'';
   return`<div class="admin"><div class="admin-top"><div class="adm-brand"><div class="sun" style="width:28px;height:28px;font-size:15px">☀️</div><span style="font-family:var(--display);font-size:17px;color:var(--text)">Bright Beginnings</span><span class="adm-pill">ADMIN</span></div><button class="btn btn-g btn-sm" data-a="go-home">← Exit</button></div><div class="tab-bar">${tabBar}</div><div class="adm-cnt">${content}</div></div>`;
 }
 
@@ -819,16 +535,14 @@ function AOverview(){
   const now=new Date(),tod=startDay(now),wk=startWeek(now);
   const inList=emps.filter(e=>getActive(e.id));
   const outList=emps.filter(e=>!getActive(e.id));
-  const totTod=emps.reduce((s,e)=>{let h=calcHours(e.id,tod,null);const a=getActive(e.id);if(a)h+=workedHours(a,now.toISOString());return s+h;},0);
-  const totWk=emps.reduce((s,e)=>{let h=calcHours(e.id,wk,null);const a=getActive(e.id);if(a)h+=workedHours(a,now.toISOString());return s+h;},0);
+  const totTod=emps.reduce((s,e)=>{let h=calcHours(e.id,tod,null);const a=getActive(e.id);if(a)h+=(now-new Date(a.clockIn))/3600000;return s+h;},0);
+  const totWk=emps.reduce((s,e)=>{let h=calcHours(e.id,wk,null);const a=getActive(e.id);if(a)h+=(now-new Date(a.clockIn))/3600000;return s+h;},0);
   const unread=DB.msgs().filter(m=>m.author!=='admin'&&!m.adminRead).length;
   const pendTOR=DB.toReqs().filter(r=>r.status==='pending').length;
-  const flaggedEntries=DB.entries().filter(e=>hasUnresolvedFlags(e)).length;
-  const inRows=inList.length===0?`<div style="color:var(--muted);padding:14px;text-align:center;font-weight:600">No one clocked in 🌙</div>`:inList.map(e=>{const a=getActive(e.id);const dur=workedHours(a,now.toISOString());return`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;border-bottom:1.5px solid var(--border)"><div><div style="font-weight:800;font-size:13px">${esc(e.name)}</div><div style="font-size:11px;color:var(--text2);font-weight:600">${isOnBreak(a)?'On break since '+fTime(a.breaks[a.breaks.length-1].start):'Since '+fTime(a.clockIn)}</div></div><span class="badge bg"><span class="pulse"></span> ${fH(dur)}h</span></div>`;}).join('');
+  const inRows=inList.length===0?`<div style="color:var(--muted);padding:14px;text-align:center;font-weight:600">No one clocked in 🌙</div>`:inList.map(e=>{const a=getActive(e.id);const dur=(now-new Date(a.clockIn))/3600000;return`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;border-bottom:1.5px solid var(--border)"><div><div style="font-weight:800;font-size:13px">${esc(e.name)}</div><div style="font-size:11px;color:var(--text2);font-weight:600">Since ${fTime(a.clockIn)}</div></div><span class="badge bg"><span class="pulse"></span> ${fH(dur)}h</span></div>`;}).join('');
   return`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px"><div class="stat-box"><div class="stat-lbl">Clocked In</div><div class="stat-val" style="color:var(--green)">${inList.length}</div></div><div class="stat-box"><div class="stat-lbl">Today Total</div><div class="stat-val">${fH(totTod)}h</div></div><div class="stat-box"><div class="stat-lbl">This Week</div><div class="stat-val">${fH(totWk)}h</div></div></div>
   ${unread>0?`<div style="background:var(--yw-lt);border:1.5px solid var(--yellow);border-radius:11px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between"><span style="font-weight:700;color:var(--yw-dk);font-size:13px">💬 ${unread} unread staff note${unread>1?'s':''}</span><button class="btn btn-y btn-sm" data-a="tab" data-tab="notes">View</button></div>`:''}
   ${pendTOR>0?`<div style="background:var(--pk-lt);border:1.5px solid var(--pink);border-radius:11px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between"><span style="font-weight:700;color:var(--pk-dk);font-size:13px">📅 ${pendTOR} pending time-off request${pendTOR>1?'s':''}</span><button class="btn btn-sm" style="background:var(--pink);color:#fff;" data-a="tab" data-tab="tor">Review</button></div>`:''}
-  ${flaggedEntries>0?`<div style="background:var(--ot-lt);border:1.5px solid var(--ot);border-radius:11px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between"><span style="font-weight:700;color:var(--ot);font-size:13px">⚠ ${flaggedEntries} flagged timecard${flaggedEntries>1?'s':''} need review</span><button class="btn btn-sm" style="background:var(--ot);color:#fff;" data-a="show-flagged">Open</button></div>`:''}
   <div class="sec-hdr"><div class="sec-ttl">Currently Clocked In</div><span class="badge bg">${inList.length} active</span></div>
   <div class="tbl-wrap" style="margin-bottom:16px">${inRows}</div>
   <div class="sec-hdr"><div class="sec-ttl">Clocked Out</div></div>
@@ -858,13 +572,12 @@ function ATime(){
   if(S.fEmp!=='all')entries=entries.filter(e=>e.employeeId===S.fEmp);
   if(S.fStart)entries=entries.filter(e=>new Date(e.clockIn)>=new Date(S.fStart));
   if(S.fEnd){const en=new Date(S.fEnd);en.setHours(23,59,59,999);entries=entries.filter(e=>new Date(e.clockIn)<=en);}
-  if(S.fFlag==='flagged')entries=entries.filter(e=>hasUnresolvedFlags(e));
   entries=entries.sort((a,b)=>new Date(b.clockIn)-new Date(a.clockIn));
 
   // Totals per employee
   const empTotals={};
   entries.forEach(e=>{
-    const dur=workedHours(e);
+    const dur=(new Date(e.clockOut)-new Date(e.clockIn))/3600000;
     const {reg,ot}=splitOT(dur);
     if(!empTotals[e.employeeId])empTotals[e.employeeId]={reg:0,ot:0,total:0};
     empTotals[e.employeeId].reg+=reg;empTotals[e.employeeId].ot+=ot;empTotals[e.employeeId].total+=dur;
@@ -874,16 +587,14 @@ function ATime(){
   const grandTotal=grandReg+grandOT;
 
   const empOpts=emps.map(e=>`<option value="${e.id}" ${S.fEmp===e.id?'selected':''}>${esc(e.name)}</option>`).join('');
-  const rows=entries.length===0?`<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:22px">No entries found</td></tr>`:entries.map(e=>{
+  const rows=entries.length===0?`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:22px">No entries found</td></tr>`:entries.map(e=>{
     const emp=emps.find(em=>em.id===e.employeeId);
-    const dur=workedHours(e);
+    const dur=(new Date(e.clockOut)-new Date(e.clockIn))/3600000;
     const {reg,ot}=splitOT(dur);
-    const flags=getEntryFlags(e);
     const msgs=getMsgs(e.id);
     const noteCount=msgs.length+(e.note?1:0);
     const noteTd=noteCount>0?`<div class="note-pill">📝 ${esc(e.note||msgs[0]?.text||'')}${noteCount>1?` +${noteCount-1}`:''}</div>`:`<span style="color:var(--muted);font-size:11px">—</span>`;
-    const flagTd=flags.length>0?`<div style="display:flex;gap:4px;flex-wrap:wrap">${flags.map(f=>`<span class="badge ${e.flagReviewed?'bm':'bo'}">${esc(flagLabel(f))}</span>`).join('')}</div>`:`<span style="color:var(--muted);font-size:11px">—</span>`;
-    return`<tr><td><strong>${emp?esc(emp.name):'?'}</strong></td><td style="font-size:11px;font-weight:600">${fDate(e.clockIn)}</td><td style="font-family:var(--mono);font-size:10px">${fTime(e.clockIn)}<br>${fTime(e.clockOut)}</td><td style="font-family:var(--mono)">${fH(reg)}h</td><td style="font-family:var(--mono);color:var(--ot)">${ot>0?fH(ot)+'h':'—'}</td><td>${flagTd}</td><td>${noteTd}</td><td><div style="display:flex;gap:3px"><button class="btn btn-g btn-sm" data-a="edit-entry" data-entry="${e.id}">Edit</button><button class="btn btn-r btn-sm" data-a="del-entry" data-entry="${e.id}">✕</button></div></td></tr>`;
+    return`<tr><td><strong>${emp?esc(emp.name):'?'}</strong></td><td style="font-size:11px;font-weight:600">${fDate(e.clockIn)}</td><td style="font-family:var(--mono);font-size:10px">${fTime(e.clockIn)}<br>${fTime(e.clockOut)}</td><td style="font-family:var(--mono)">${fH(reg)}h</td><td style="font-family:var(--mono);color:var(--ot)">${ot>0?fH(ot)+'h':'—'}</td><td>${noteTd}</td><td><div style="display:flex;gap:3px"><button class="btn btn-g btn-sm" data-a="edit-entry" data-entry="${e.id}">Edit</button><button class="btn btn-r btn-sm" data-a="del-entry" data-entry="${e.id}">✕</button></div></td></tr>`;
   }).join('');
 
   // Per-employee summary table (shown below)
@@ -894,9 +605,9 @@ function ATime(){
   const summarySection=Object.keys(empTotals).length>0?`<div class="sec-hdr" style="margin-top:18px"><div class="sec-ttl">Pay Period Summary</div></div>
   <div class="tbl-wrap"><table class="dtbl"><thead><tr><th>Employee</th><th>Regular Hrs</th><th>OT Hrs (&gt;8/day)</th><th>Total Hrs</th></tr></thead><tbody>${summaryRows}</tbody><tfoot><tr><td><strong>TOTAL</strong></td><td style="font-family:var(--mono)">${fH(grandReg)}h</td><td style="font-family:var(--mono);color:var(--ot)">${grandOT>0?fH(grandOT)+'h':'—'}</td><td style="font-family:var(--mono)">${fH(grandTotal)}h</td></tr></tfoot></table></div>`:'';
 
-  return`<div class="filters"><select id="fe" data-action="fEmp"><option value="all" ${S.fEmp==='all'?'selected':''}>All Staff</option>${empOpts}</select><input type="date" id="fs" value="${S.fStart}" data-action="fStart"/><input type="date" id="fd" value="${S.fEnd}" data-action="fEnd"/><select id="ff" data-action="fFlag"><option value="all" ${S.fFlag==='all'?'selected':''}>All Entries</option><option value="flagged" ${S.fFlag==='flagged'?'selected':''}>Flagged Only</option></select></div>
+  return`<div class="filters"><select id="fe" data-action="fEmp"><option value="all" ${S.fEmp==='all'?'selected':''}>All Staff</option>${empOpts}</select><input type="date" id="fs" value="${S.fStart}" data-action="fStart"/><input type="date" id="fd" value="${S.fEnd}" data-action="fEnd"/></div>
   <div class="sec-hdr"><div class="sec-ttl">Time Entries <span style="color:var(--muted);font-size:13px;font-weight:400">(${entries.length})</span></div><div style="display:flex;gap:7px;align-items:center"><span style="font-size:12px;color:var(--text2);font-weight:700">Total: <strong style="color:var(--bl-dk);font-family:var(--mono)">${fH(grandTotal)}h</strong>${grandOT>0?` <strong style="color:var(--ot);font-family:var(--mono)">(${fH(grandOT)}h OT)</strong>`:''}</span><button class="btn btn-g btn-sm" data-a="export-csv">⬇ CSV</button></div></div>
-  <div class="tbl-wrap"><table class="dtbl"><thead><tr><th>Staff</th><th>Date</th><th>In / Out</th><th>Reg Hrs</th><th>OT Hrs</th><th>Flags</th><th>Notes</th><th>Actions</th></tr></thead><tbody>${rows}</tbody></table></div>
+  <div class="tbl-wrap"><table class="dtbl"><thead><tr><th>Staff</th><th>Date</th><th>In / Out</th><th>Reg Hrs</th><th>OT Hrs</th><th>Notes</th><th>Actions</th></tr></thead><tbody>${rows}</tbody></table></div>
   ${summarySection}
   ${S.editEntryId?EditEntryModal(emps):''}`;
 }
@@ -911,7 +622,6 @@ function EditEntryModal(emps){
   <div class="field"><label>Clock Out</label><input type="datetime-local" id="ee-out" value="${entry.clockOut?toLocal(entry.clockOut):''}"/></div>
   <div class="field"><label>Admin Note (visible to staff)</label><input type="text" id="ee-note" value="${esc(entry.note||'')}" placeholder="e.g. Fixed missed punch – out was 5pm"/></div>
   <div style="background:var(--surface2);border-radius:9px;padding:11px;margin-bottom:13px"><div style="font-size:10px;font-weight:800;color:var(--muted);margin-bottom:7px;letter-spacing:.5px">MESSAGE THREAD</div>${bubbles}<div class="field" style="margin-top:9px;margin-bottom:0"><label>Reply to Staff</label><textarea id="ee-msg" placeholder="Type a reply…" rows="2"></textarea></div></div>
-  <div style="display:flex;align-items:center;gap:7px;margin-bottom:12px"><input type="checkbox" id="ee-reviewed" ${entry.flagReviewed?'checked':''} style="width:auto"/><label for="ee-reviewed" style="margin:0">Mark flags as reviewed</label></div>
   <div style="display:flex;gap:9px"><button class="btn btn-b" data-a="save-entry">Save Changes</button><button class="btn btn-g" data-a="close-modal">Cancel</button></div></div></div>`;
 }
 
@@ -1016,16 +726,11 @@ function ASettings(){
 function bind(){
   clearInterval(window._clk);
   if(S.screen==='home')window._clk=setInterval(()=>{const el=document.getElementById('lc');if(el)el.textContent=clockStr();else clearInterval(window._clk);},1000);
-  bindIdleTracking();
-  resetIdleTimer();
 
   // Filter changes
   document.querySelectorAll('[data-action="fEmp"]').forEach(el=>el.addEventListener('change',()=>set({fEmp:el.value})));
   document.querySelectorAll('[data-action="fStart"]').forEach(el=>el.addEventListener('change',()=>set({fStart:el.value})));
   document.querySelectorAll('[data-action="fEnd"]').forEach(el=>el.addEventListener('change',()=>set({fEnd:el.value})));
-  document.querySelectorAll('[data-action="fFlag"]').forEach(el=>el.addEventListener('change',()=>set({fFlag:el.value})));
-  document.querySelectorAll('[data-action="ehStart"]').forEach(el=>el.addEventListener('change',()=>set({ehStart:el.value})));
-  document.querySelectorAll('[data-action="ehEnd"]').forEach(el=>el.addEventListener('change',()=>set({ehEnd:el.value})));
 
   // Admin login enter key
   const apw=document.getElementById('apw');
@@ -1051,14 +756,12 @@ function act(a,d={}){
   switch(a){
     // Navigation
     case 'sel-emp': set({screen:'pin',selEmp:d.emp,pin:'',pinErr:false}); break;
-    case 'go-home': clearInterval(window._clk);set({screen:'home',selEmp:null,pin:'',editEntryId:null,adjPTO:null,addEmp:false,editEmpId:null,noteModal:null,addTOReq:false,selCalDay:null,torSelDay:null,boardCompose:false}); break;
+    case 'go-home': clearInterval(window._clk);set({screen:'home',selEmp:null,pin:'',editEntryId:null,adjPTO:null,addEmp:false,editEmpId:null,noteModal:null,addTOReq:false,selCalDay:null,torSelDay:null}); break;
     case 'go-al': set({screen:'al'}); break;
     case 'go-emp': set({screen:'emp',addTOReq:false,selCalDay:null}); break;
-    case 'go-timecards': set({screen:'etimecards'}); break;
     case 'go-tor': set({screen:'tor',torCalYear:new Date().getFullYear(),torCalMonth:new Date().getMonth(),torSelDay:null}); break;
     case 'admin-login':{const pw=(document.getElementById('apw')||{}).value||'';if(pw===DB.cfg().adminPassword)set({screen:'admin',tab:'overview'});else toast('Incorrect password','error');break;}
     case 'tab': set({tab:d.tab,editEntryId:null,adjPTO:null,addEmp:false,editEmpId:null,selCalDay:null}); break;
-    case 'show-flagged': set({tab:'time',fFlag:'flagged'}); break;
     case 'bg-close': set({editEntryId:null,adjPTO:null,noteModal:null,addTOReq:false}); break;
     case 'close-modal': set({editEntryId:null,adjPTO:null}); break;
     case 'close-note': set({noteModal:null}); break;
@@ -1081,15 +784,11 @@ function act(a,d={}){
       const active=entries.find(e=>e.employeeId===emp.id&&!e.clockOut);
       if(active){
         active.clockOut=new Date().toISOString();
-        if(Array.isArray(active.breaks)&&active.breaks.length){
-          const lb=active.breaks[active.breaks.length-1];
-          if(lb&&lb.start&&!lb.end)lb.end=active.clockOut;
-        }
         if(noteText)active.note=noteText;
         DB.saveEntries(entries);
         const cfg=DB.cfg();
         if(cfg.accrualOn){
-          const hrs=workedHours(active);
+          const hrs=(new Date(active.clockOut)-new Date(active.clockIn))/3600000;
           const rate=emp.customRate!=null?emp.customRate:cfg.accrualRate;
           const accrued=hrs*rate;
           const emps=DB.emps();const idx=emps.findIndex(e=>e.id===emp.id);
@@ -1115,55 +814,6 @@ function act(a,d={}){
       const emp=DB.emps().find(e=>e.id===S.selEmp);
       const msgs=DB.msgs();msgs.push({id:genId(),entryId:S.noteModal,author:'staff',authorId:emp.id,authorName:emp.name,text:txt,ts:new Date().toISOString(),adminRead:false});DB.saveMsgs(msgs);
       toast('Note sent to admin! 📤');set({noteModal:null});break;
-    }
-    case 'submit-missed-reminder':{
-      const entryId=d.entry;
-      const leaveTime=(document.getElementById('mr-time')||{}).value||'';
-      const note=(document.getElementById('mr-note')||{}).value?.trim()||'No additional note provided.';
-      const entries=DB.entries();
-      const idx=entries.findIndex(e=>e.id===entryId);
-      if(idx<0)break;
-      entries[idx].employeeReminderAck=true;
-      entries[idx].employeeReminderAt=new Date().toISOString();
-      entries[idx].employeeReportedOutTime=leaveTime||null;
-      entries[idx].employeeReminderNote=note;
-      entries[idx].flagReviewed=false;
-      addFlag(entries[idx],'auto_clockout');
-      DB.saveEntries(entries);
-      const emp=DB.emps().find(e=>e.id===S.selEmp);
-      const msgs=DB.msgs();
-      const timeText=leaveTime?`Reported leave time: ${leaveTime}. `:'';
-      msgs.push({id:genId(),entryId,author:'staff',authorId:emp?.id||'',authorName:emp?.name||'Staff',text:`Missed clock-out follow-up. ${timeText}${note}`,ts:new Date().toISOString(),adminRead:false});
-      DB.saveMsgs(msgs);
-      toast('Thanks! Admin has been notified.');
-      render();
-      break;
-    }
-    case 'start-break':{
-      const emp=DB.emps().find(e=>e.id===S.selEmp);if(!emp)break;
-      const entries=DB.entries();
-      const active=entries.find(e=>e.employeeId===emp.id&&!e.clockOut);
-      if(!active){toast('You are not clocked in','error');break;}
-      active.breaks=Array.isArray(active.breaks)?active.breaks:[];
-      if(isOnBreak(active)){toast('Break already running','error');break;}
-      active.breaks.push({start:new Date().toISOString(),end:null});
-      DB.saveEntries(entries);toast('Break started ⏸');render();break;
-    }
-    case 'end-break':{
-      const emp=DB.emps().find(e=>e.id===S.selEmp);if(!emp)break;
-      const entries=DB.entries();
-      const active=entries.find(e=>e.employeeId===emp.id&&!e.clockOut);
-      if(!active||!isOnBreak(active)){toast('No active break to end','error');break;}
-      const lb=active.breaks[active.breaks.length-1];
-      lb.end=new Date().toISOString();
-      DB.saveEntries(entries);toast('Break ended ▶');render();break;
-    }
-    case 'dismiss-missed-reminder':{
-      const entries=DB.entries();
-      const idx=entries.findIndex(e=>e.id===d.entry);
-      if(idx>=0){entries[idx].employeeReminderSnoozeAt=new Date().toISOString();DB.saveEntries(entries);}
-      toast('Okay, we will remind you again.','error');
-      break;
     }
 
     // Time-off requests (employee)
@@ -1195,7 +845,6 @@ function act(a,d={}){
     case 'tor-cal-next':{let m=S.torCalMonth+1,y=S.torCalYear;if(m>11){m=0;y++;}set({torCalMonth:m,torCalYear:y,torSelDay:null});break;}
     case 'tor-pick-day': set({torSelDay:parseInt(d.day)}); break;
     case 'tor-clear-day': set({torSelDay:null}); break;
-    case 'clear-eh': set({ehStart:'',ehEnd:''}); break;
 
     // Admin: staff management
     case 'show-add-emp': set({addEmp:true,editEmpId:null}); break;
@@ -1226,12 +875,8 @@ function act(a,d={}){
       const ee=(document.getElementById('ee-emp')||{}).value;
       const en=(document.getElementById('ee-note')||{}).value?.trim();
       const emsg=(document.getElementById('ee-msg')||{}).value?.trim();
-      const reviewed=!!((document.getElementById('ee-reviewed')||{}).checked);
       if(!ei){toast('Clock-in time required','error');break;}
-      const prev=entries[idx];
-      entries[idx]={...entries[idx],employeeId:ee,clockIn:new Date(ei).toISOString(),clockOut:eo?new Date(eo).toISOString():null,note:en||entries[idx].note||null,flagReviewed:reviewed};
-      if(prev.employeeId!==entries[idx].employeeId||prev.clockIn!==entries[idx].clockIn||prev.clockOut!==entries[idx].clockOut)addFlag(entries[idx],'manual_edit');
-      if(getEntryFlags(entries[idx]).length===0)entries[idx].flagReviewed=true;
+      entries[idx]={...entries[idx],employeeId:ee,clockIn:new Date(ei).toISOString(),clockOut:eo?new Date(eo).toISOString():null,note:en||entries[idx].note||null};
       DB.saveEntries(entries);
       if(emsg){const msgs=DB.msgs();msgs.push({id:genId(),entryId:S.editEntryId,author:'admin',authorId:'admin',authorName:'Admin',text:emsg,ts:new Date().toISOString(),adminRead:true});DB.saveMsgs(msgs);}
       toast('Entry saved! ✅');set({editEntryId:null});break;
@@ -1258,34 +903,6 @@ function act(a,d={}){
     case 'save-rate':{const r=parseFloat((document.getElementById('s-rate')||{}).value);if(isNaN(r)||r<0){toast('Invalid rate','error');break;}const cfg=DB.cfg();cfg.accrualRate=r;DB.saveCfg(cfg);toast('Rate saved!');render();break;}
     case 'clear-entries':{if(!confirm('Delete ALL time entries? Cannot be undone.'))break;DB.saveEntries([]);DB.saveMsgs([]);toast('Cleared');render();break;}
 
-
-    // ── Community Board actions ───────────────────────────────────────────────
-    case 'go-board': set({screen:'board',boardCompose:false,boardTag:'general'}); break;
-    case 'go-board-home': set({screen:'board',boardCompose:false,boardTag:'general'}); break;
-    case 'board-compose': set({boardCompose:true}); break;
-    case 'board-cancel': set({boardCompose:false,boardTag:'general'}); break;
-    case 'board-tag': set({boardTag:d.tag}); break;
-    case 'board-post':{
-      const body=(document.getElementById('board-msg')||{}).value?.trim();
-      if(!body){toast('Please write something first','error');break;}
-      if(body.length>500){toast('Post too long (max 500 characters)','error');break;}
-      const emp=DB.emps().find(e=>e.id===S.selEmp);
-      const posts=DB.boardPosts();
-      posts.push({id:genId(),empId:emp.id,empName:emp.name,tag:S.boardTag||'general',body,ts:new Date().toISOString()});
-      DB.saveBoardPosts(posts);
-      toast('Posted! 📣');set({boardCompose:false,boardTag:'general'});break;
-    }
-    case 'board-del':{
-      if(!confirm('Delete your post?'))break;
-      DB.saveBoardPosts(DB.boardPosts().filter(p=>p.id!==d.pid));
-      toast('Post deleted');render();break;
-    }
-    case 'board-admin-del':{
-      if(!confirm('Remove this post from the board?'))break;
-      DB.saveBoardPosts(DB.boardPosts().filter(p=>p.id!==d.pid));
-      toast('Post removed');render();break;
-    }
-
     // CSV export
     case 'export-csv':{
       const emps=DB.emps();let entries=DB.entries().filter(e=>e.clockOut);
@@ -1293,15 +910,14 @@ function act(a,d={}){
       if(S.fStart)entries=entries.filter(e=>new Date(e.clockIn)>=new Date(S.fStart));
       if(S.fEnd){const en=new Date(S.fEnd);en.setHours(23,59,59,999);entries=entries.filter(e=>new Date(e.clockIn)<=en);}
       entries=entries.sort((a,b)=>new Date(a.clockIn)-new Date(b.clockIn));
-      const rows=[['Employee','Date','Clock In','Clock Out','Regular Hrs','OT Hrs (>8/day)','Total Hrs','Flags','Notes'],
+      const rows=[['Employee','Date','Clock In','Clock Out','Regular Hrs','OT Hrs (>8/day)','Total Hrs','Notes'],
         ...entries.map(e=>{
           const emp=emps.find(em=>em.id===e.employeeId);
-          const dur=workedHours(e);
+          const dur=(new Date(e.clockOut)-new Date(e.clockIn))/3600000;
           const {reg,ot}=splitOT(dur);
           const msgs=getMsgs(e.id);
-          const flags=getEntryFlags(e).map(flagLabel).join(' | ');
           const note=e.note||(msgs.length>0?msgs.map(m=>m.authorName+': '+m.text).join(' | '):'');
-          return[emp?emp.name:'?',fDate(e.clockIn),new Date(e.clockIn).toLocaleString(),new Date(e.clockOut).toLocaleString(),reg.toFixed(2),ot.toFixed(2),dur.toFixed(2),flags,note];
+          return[emp?emp.name:'?',fDate(e.clockIn),new Date(e.clockIn).toLocaleString(),new Date(e.clockOut).toLocaleString(),reg.toFixed(2),ot.toFixed(2),dur.toFixed(2),note];
         })];
       const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
       const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`timesheets_${new Date().toISOString().slice(0,10)}.csv`;a.click();toast('CSV downloaded!');break;
@@ -1310,7 +926,7 @@ function act(a,d={}){
 }
 
 // ─── MAIN RENDER ─────────────────────────────────────────────────────────────
-const _screenMap = {home:Home,pin:Pin,emp:Emp,etimecards:EmpTimecards,'al':AdminLogin,admin:Admin,tor:TORPage,board:BoardScreen};
+const _screenMap = {home:Home,pin:Pin,emp:Emp,'al':AdminLogin,admin:Admin,tor:TORPage};
 
 function render(){
   const app = document.getElementById('app');
@@ -1330,8 +946,6 @@ function render(){
         </div>`;
     return;
   }
-
-  autoCloseStaleOpenEntries();
 
   app.innerHTML = (_screenMap[S.screen]||Home)()+
     (S.toast ? `<div class="toast ${S.toast.type}">${esc(S.toast.msg)}</div>` : '');
