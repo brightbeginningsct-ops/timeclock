@@ -319,7 +319,20 @@ const firebaseConfig = {
   messagingSenderId: "873798614696",
   appId: "1:873798614696:web:ec275b8b82af54aab30c9d"
 };
+
+// 1. Initialize Firebase
 firebase.initializeApp(firebaseConfig);
+
+// 2. ADD THIS: Sign in the user invisibly
+firebase.auth().signInAnonymously()
+  .then(() => {
+    console.log("Invisible connection active.");
+  })
+  .catch((error) => {
+    console.error("Auth failed:", error.code, error.message);
+  });
+
+// 3. Connect to Database as usual
 const fdb = firebase.database();
 
 // ─── LOCAL CACHE (filled by Firebase listeners) ───────────────────────────────
