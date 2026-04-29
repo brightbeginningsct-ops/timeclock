@@ -770,7 +770,8 @@ function EditEntryModal(emps){
   return`<div class="modal-overlay" data-a="bg-close"><div class="modal"><h2>✏️ Edit Entry</h2>
   <div class="field"><label>Staff Member</label><select id="ee-emp">${emps.map(e=>`<option value="${e.id}" ${e.id===entry.employeeId?'selected':''}>${esc(e.name)}</option>`).join('')}</select></div>
   <div class="field"><label>Clock In</label><input type="datetime-local" id="ee-in" value="${toLocal(entry.clockIn)}"/></div>
-  <div class="field"><label>Clock Out</label><input type="datetime-local" id="ee-out" value="${entry.clockOut?toLocal(entry.clockOut):''}"/></div>
+  <div class="field"><label>Clock Out</label><input type="datetime-local" id="ee-out" value="${entry.clockOut?toLocal(entry.clockOut):''}"/></div><div class="field"><label>Break Start</label><input type="datetime-local" id="ee-break-start" value="${entry.breaks && entry.breaks[0] ? toLocal(entry.breaks[0].start) : ''}"/></div>
+<div class="field"><label>Break End</label><input type="datetime-local" id="ee-break-end" value="${entry.breaks && entry.breaks[0] ? toLocal(entry.breaks[0].end) : ''}"/></div>
   <div class="field"><label>Admin Note (visible to staff)</label><input type="text" id="ee-note" value="${esc(entry.note||'')}" placeholder="e.g. Fixed missed punch – out was 5pm"/></div>
   <div style="background:var(--surface2);border-radius:9px;padding:11px;margin-bottom:13px"><div style="font-size:10px;font-weight:800;color:var(--muted);margin-bottom:7px;letter-spacing:.5px">MESSAGE THREAD</div>${bubbles}<div class="field" style="margin-top:9px;margin-bottom:0"><label>Reply to Staff</label><textarea id="ee-msg" placeholder="Type a reply…" rows="2"></textarea></div></div>
   <div style="display:flex;align-items:center;gap:7px;margin-bottom:12px"><input type="checkbox" id="ee-reviewed" ${entry.flagReviewed?'checked':''} style="width:auto"/><label for="ee-reviewed" style="margin:0">Mark flags as reviewed</label></div>
@@ -1086,6 +1087,8 @@ function act(a,d={}){
       const ei=(document.getElementById('ee-in')||{}).value;
       const eo=(document.getElementById('ee-out')||{}).value;
       const ee=(document.getElementById('ee-emp')||{}).value;
+      const bs=(document.getElementById('ee-break-start')||{}).value;
+      const be=(document.getElementById('ee-break-end')||{}).value;
       const en=(document.getElementById('ee-note')||{}).value?.trim();
       const emsg=(document.getElementById('ee-msg')||{}).value?.trim();
       const reviewed=!!((document.getElementById('ee-reviewed')||{}).checked);
@@ -1103,7 +1106,7 @@ function act(a,d={}){
       }
 
       // 2. APPLY EDITS
-      entries[idx]={...entries[idx],employeeId:ee,clockIn:new Date(ei).toISOString(),clockOut:eo?new Date(eo).toISOString():null,note:en||entries[idx].note||null,flagReviewed:reviewed};
+      entries[idx]={...entries[idx],employeeId:ee,clockIn:new Date(ei).toISOString(),clockOut:eo?new Date(eo).toISOString():null,note:en||entries[idx].note||null,flagReviewed:reviewed,breaks:(bs && be ? [{start:new Date(bs).toISOString(), end:new Date(be).toISOString()}] : [])};
       if(prev.employeeId!==entries[idx].employeeId||prev.clockIn!==entries[idx].clockIn||prev.clockOut!==entries[idx].clockOut)addFlag(entries[idx],'manual_edit');
       
       // 3. APPLY NEW PTO
