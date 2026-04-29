@@ -1123,7 +1123,33 @@ function act(a,d={}){
       toast('Entry saved & PTO Recalculated! ✅');set({editEntryId:null});break;
 
     }
-    case 'del-entry':{if(!confirm('Delete this time entry?'))break;DB.saveEntries(DB.entries().filter(e=>e.id!==d.entry));toast('Deleted');render();break;}
+    case 'del-entry':{
+      if(!confirm('Delete this time entry?'))break;
+      const entries = DB.entries();
+      const entryToDelete = entries.find(e => e.id === d.entry);
+      if(entryToDelete && entryToDelete.clockOut) {
+        const emp = DB.emps().find(e => e.id === entryToDelete.employeeId);
+        const cfg = DB.cfg();
+        if(emp && cfg.accrualOn) {
+          const hrs = workedHours(entryToDelete);
+          const rate = emp.customRate != null ? emp.customRate : cfg.accrualRate;
+          const ptoToSubtract = hrs * rate;
+          const emps = DB.emps();
+          const idx = emps.findIndex(e => e.id === emp.id);
+          if(idx >= 0) {
+            emps[idx].ptoBalance = Math.max(0, (emps[idx].ptoBalance || 0) - ptoToSubtract);
+            DB.saveEmps(emps);
+            const log = DB.ptoLog();
+            log.push({id:genId(), empId:emp.id, date:new Date().toISOString(), amount:-ptoToSubtract, note:`Reversed accrual (Deleted ${fH(hrs)}h shift)`});
+            DB.savePTOLog(log);
+          }
+        }
+      }
+      DB.saveEntries(entries.filter(e => e.id !== d.entry));
+      toast('Deleted & PTO Adjusted');
+      render();
+      break;
+    }
     case 'go-to-entry': set({tab:'time',editEntryId:d.entry}); break;
 
     // PTO adjustment
