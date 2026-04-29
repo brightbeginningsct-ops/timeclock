@@ -1106,7 +1106,7 @@ function act(a,d={}){
       }
 
       // 2. APPLY EDITS
-      entries[idx]={...entries[idx],employeeId:ee,clockIn:new Date(ei).toISOString(),clockOut:eo?new Date(eo).toISOString():null,note:en||entries[idx].note||null,flagReviewed:reviewed};
+      entries[idx]={...entries[idx],employeeId:ee,clockIn:new Date(ei).toISOString(),clockOut:eo?new Date(eo).toISOString():null,note:en||entries[idx].note||null,flagReviewed:reviewed,breaks:(bs && be ? [{start:new Date(bs).toISOString(), end:new Date(be).toISOString()}] : [])};
       if(prev.employeeId!==entries[idx].employeeId||prev.clockIn!==entries[idx].clockIn||prev.clockOut!==entries[idx].clockOut)addFlag(entries[idx],'manual_edit');
       
       // 3. APPLY NEW PTO
