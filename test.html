@@ -1173,7 +1173,34 @@ function act(a,d={}){
     case 'preset':{const el=document.getElementById('s-rate');if(el)el.value=parseFloat(d.r).toFixed(6);break;}
     case 'save-rate':{const r=parseFloat((document.getElementById('s-rate')||{}).value);if(isNaN(r)||r<0){toast('Invalid rate','error');break;}const cfg=DB.cfg();cfg.accrualRate=r;DB.saveCfg(cfg);toast('Rate saved!');render();break;}
     case 'clear-entries':{if(!confirm('Delete ALL time entries? Cannot be undone.'))break;DB.saveEntries([]);DB.saveMsgs([]);toast('Cleared');render();break;}
-
+    
+    // New Entry
+    case 'new-entry':{
+      const emps = DB.emps();
+      if(!emps.length){ toast('No employees exist yet','error'); break; }
+      
+      // Create a default start time of 8:00 AM today
+      const defaultStart = new Date();
+      defaultStart.setHours(8,0,0,0);
+      
+      // Build a blank entry
+      const newEntry = {
+        id: genId(),
+        employeeId: emps[0].id, // Defaults to the first employee on your list
+        clockIn: defaultStart.toISOString(),
+        clockOut: null,
+        breaks: [],
+        note: 'Manually created by Admin',
+        flagReviewed: false
+      };
+      
+      // Save it to the database and immediately open the Edit Modal
+      const entries = DB.entries();
+      entries.push(newEntry);
+      DB.saveEntries(entries);
+      set({ editEntryId: newEntry.id });
+      break;
+    }  
     // CSV export
     case 'export-csv':{
       const emps=DB.emps();let entries=DB.entries().filter(e=>e.clockOut);
