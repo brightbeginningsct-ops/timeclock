@@ -757,7 +757,7 @@ function ATime(){
   <div class="tbl-wrap"><table class="dtbl"><thead><tr><th>Employee</th><th>Regular Hrs</th><th>OT Hrs (&gt;8/day)</th><th>Total Hrs</th></tr></thead><tbody>${summaryRows}</tbody><tfoot><tr><td><strong>TOTAL</strong></td><td style="font-family:var(--mono)">${fH(grandReg)}h</td><td style="font-family:var(--mono);color:var(--ot)">${grandOT>0?fH(grandOT)+'h':'—'}</td><td style="font-family:var(--mono)">${fH(grandTotal)}h</td></tr></tfoot></table></div>`:'';
 
   return`<div class="filters"><select id="fe" data-action="fEmp"><option value="all" ${S.fEmp==='all'?'selected':''}>All Staff</option>${empOpts}</select><input type="date" id="fs" value="${S.fStart}" data-action="fStart"/><input type="date" id="fd" value="${S.fEnd}" data-action="fEnd"/><select id="ff" data-action="fFlag"><option value="all" ${S.fFlag==='all'?'selected':''}>All Entries</option><option value="flagged" ${S.fFlag==='flagged'?'selected':''}>Flagged Only</option></select></div>
-  <div class="sec-hdr"><div class="sec-ttl">Time Entries <span style="color:var(--muted);font-size:13px;font-weight:400">(${entries.length})</span></div><div style="display:flex;gap:7px;align-items:center"><span style="font-size:12px;color:var(--text2);font-weight:700">Total: <strong style="color:var(--bl-dk);font-family:var(--mono)">${fH(grandTotal)}h</strong>${grandOT>0?` <strong style="color:var(--ot);font-family:var(--mono)">(${fH(grandOT)}h OT)</strong>`:''}</span><button class="btn btn-g btn-sm" data-a="export-csv">⬇ CSV</button></div></div>
+  <div class="sec-hdr"><div class="sec-ttl">Time Entries <span style="color:var(--muted);font-size:13px;font-weight:400">(${entries.length})</span></div><div style="display:flex;gap:7px;align-items:center"><span style="font-size:12px;color:var(--text2);font-weight:700">Total: <strong style="color:var(--bl-dk);font-family:var(--mono)">${fH(grandTotal)}h</strong>${grandOT>0?` <strong style="color:var(--ot);font-family:var(--mono)">(${fH(grandOT)}h OT)</strong>`:''}</span><button class="btn btn-g btn-sm" data-a="new-entry" style="margin-right:8px;">+ New Timecard</button><button class="btn btn-g btn-sm" data-a="export-csv">⬇ CSV</button></div></div>
   <div class="tbl-wrap"><table class="dtbl"><thead><tr><th>Staff</th><th>Date</th><th>In / Out</th><th>Reg Hrs</th><th>OT Hrs</th><th>Flags</th><th>Notes</th><th>Actions</th></tr></thead><tbody>${rows}</tbody></table></div>
   ${summarySection}
   ${S.editEntryId?EditEntryModal(emps):''}`;
@@ -1173,7 +1173,34 @@ function act(a,d={}){
     case 'preset':{const el=document.getElementById('s-rate');if(el)el.value=parseFloat(d.r).toFixed(6);break;}
     case 'save-rate':{const r=parseFloat((document.getElementById('s-rate')||{}).value);if(isNaN(r)||r<0){toast('Invalid rate','error');break;}const cfg=DB.cfg();cfg.accrualRate=r;DB.saveCfg(cfg);toast('Rate saved!');render();break;}
     case 'clear-entries':{if(!confirm('Delete ALL time entries? Cannot be undone.'))break;DB.saveEntries([]);DB.saveMsgs([]);toast('Cleared');render();break;}
-
+    
+    // New Entry
+    case 'new-entry':{
+      const emps = DB.emps();
+      if(!emps.length){ toast('No employees exist yet','error'); break; }
+      
+      // Create a default start time of 8:00 AM today
+      const defaultStart = new Date();
+      defaultStart.setHours(8,0,0,0);
+      
+      // Build a blank entry
+      const newEntry = {
+        id: genId(),
+        employeeId: emps[0].id, // Defaults to the first employee on your list
+        clockIn: defaultStart.toISOString(),
+        clockOut: null,
+        breaks: [],
+        note: 'Manually created by Admin',
+        flagReviewed: false
+      };
+      
+      // Save it to the database and immediately open the Edit Modal
+      const entries = DB.entries();
+      entries.push(newEntry);
+      DB.saveEntries(entries);
+      set({ editEntryId: newEntry.id });
+      break;
+    }  
     // CSV export
     case 'export-csv':{
       const emps=DB.emps();let entries=DB.entries().filter(e=>e.clockOut);
