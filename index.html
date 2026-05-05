@@ -383,16 +383,41 @@ function autoCloseStaleOpenEntries(){
   if(changed)DB.saveEntries(entries);
 }
 
-// Write helpers — update cache immediately, then push to Firebase
+// Write helpers — smart update to prevent overwriting
 function fbSet(col, arr){
+  const updates = {};
+  const currentIds = new Set(arr.filter(i => i && i.id).map(i => i.id));
+  const pristine = _pristine[col] || {};
+
+  // 1. Delete removed items
+  Object.keys(pristine).forEach(id => {
+     if (!currentIds.has(id)) updates[id] = null;
+  });
+
+  // 2. Add changed or new items
+  arr.forEach(item => { 
+    if(item && item.id) {
+       // Compare against the pristine backup we made in Step 1
+       if (JSON.stringify(item) !== JSON.stringify(pristine[item.id])) {
+           updates[item.id] = item;
+       }
+    } 
+  });
+  
+  // 3. Update local cache
   const obj = {};
   arr.forEach(item => { if(item && item.id) obj[item.id] = item; });
   _cache[col] = obj;
-  fdb.ref(col).set(obj).catch(e => console.error('Firebase write error:', e));
+
+  // 4. Send ONLY the specific changes to Firebase using .update()
+  if (Object.keys(updates).length > 0) {
+      fdb.ref(dbPath(col)).update(updates).catch(e => console.error('Firebase write error:', e));
+  }
 }
+
 function fbSetObj(col, obj){
   _cache[col] = obj || {};
-  fdb.ref(col).set(obj || {}).catch(e => console.error('Firebase write error:', e));
+  fdb.ref(dbPath(col)).set(obj || {}).catch(e => console.error('Firebase write error:', e));
 }
 
 // ─── DATA ─────────────────────────────────────────────────────────────────────
