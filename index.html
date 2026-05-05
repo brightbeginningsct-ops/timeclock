@@ -1232,28 +1232,55 @@ function act(a,d={}){
       set({ editEntryId: newEntry.id });
       break;
     }  
-    // CSV export
     case 'export-csv':{
-      const emps=DB.emps();let entries=DB.entries().filter(e=>e.clockOut);
+      const emps=DB.emps();
+      let entries=DB.entries().filter(e=>e.clockOut);
       if(S.fEmp!=='all')entries=entries.filter(e=>e.employeeId===S.fEmp);
       if(S.fStart)entries=entries.filter(e=>new Date(e.clockIn)>=new Date(S.fStart));
       if(S.fEnd){const en=new Date(S.fEnd);en.setHours(23,59,59,999);entries=entries.filter(e=>new Date(e.clockIn)<=en);}
-      entries=entries.sort((a,b)=>new Date(a.clockIn)-new Date(b.clockIn));
-      const rows=[['Employee','Date','Clock In','Clock Out','Regular Hrs','OT Hrs (>8/day)','Total Hrs','Flags','Notes'],
-        ...entries.map(e=>{
-          const emp=emps.find(em=>em.id===e.employeeId);
-          const dur=workedHours(e);
-          const {reg,ot}=splitOT(dur);
-          const msgs=getMsgs(e.id);
-          const flags=getEntryFlags(e).map(flagLabel).join(' | ');
-          const note=e.note||(msgs.length>0?msgs.map(m=>m.authorName+': '+m.text).join(' | '):'');
-          return[emp?emp.name:'?',fDate(e.clockIn),new Date(e.clockIn).toLocaleString(),new Date(e.clockOut).toLocaleString(),reg.toFixed(2),ot.toFixed(2),dur.toFixed(2),flags,note];
-        })];
-      const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-      const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`timesheets_${new Date().toISOString().slice(0,10)}.csv`;a.click();toast('CSV downloaded!');break;
+
+      // 1. Calculate aggregated payroll totals per employee
+      const empTotals={};
+      entries.forEach(e=>{
+        const dur=workedHours(e);
+        const {reg,ot}=splitOT(dur);
+        if(!empTotals[e.employeeId])empTotals[e.employeeId]={reg:0,ot:0};
+        empTotals[e.employeeId].reg+=reg;
+        empTotals[e.employeeId].ot+=ot;
+      });
+
+      // 2. Format dates into MM/DD/YYYY for ADP
+      const fmtDate = (ds) => ds ? new Date(ds).toLocaleDateString('en-US', {timeZone:'UTC'}) : '';
+      const startDate = fmtDate(S.fStart);
+      const endDate = fmtDate(S.fEnd);
+
+      // 3. Build ADP formatted CSV string
+      let csv = "##GENERIC## V2.0\n";
+      csv += "IID,Pay Frequency,Pay Period Start,Pay Period End,Employee Id,Earnings Code,Pay Hours,Dollars,Separate Check,Department Number,Rate Code,Job Code\n";
+
+      Object.entries(empTotals).forEach(([empId, totals]) => {
+        const emp = emps.find(e => e.id === empId);
+        if(!emp) return;
+        const adpId = emp.adpId || '';
+
+        // Add a row for Regular Hours if they exist
+        if(totals.reg > 0) {
+          csv += `,,${startDate},${endDate},${adpId},REG,${totals.reg.toFixed(2)},,,,,\n`;
+        }
+        // Add a separate row for Overtime Hours if they exist
+        if(totals.ot > 0) {
+          csv += `,,${startDate},${endDate},${adpId},OVT,${totals.ot.toFixed(2)},,,,,\n`;
+        }
+      });
+
+      // 4. Trigger the download
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+      a.download=`ADP_Timesheets_${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+      toast('ADP Ready CSV Exported! ⬇️');
+      break;
     }
-  }
-}
 
 // ─── MAIN RENDER ─────────────────────────────────────────────────────────────
 const _screenMap = {home:Home,pin:Pin,emp:Emp,etimecards:EmpTimecards,'al':AdminLogin,admin:Admin,tor:TORPage};
