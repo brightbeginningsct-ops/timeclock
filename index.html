@@ -327,20 +327,25 @@ firebase.initializeApp(firebaseConfig);
 
 const fdb = firebase.database();
 
-// ─── LOCAL CACHE (filled by Firebase listeners) ───────────────────────────────
+// ─── LOCAL CACHE (filled by Firebase listeners) ───
 const COLS = ['settings','employees','entries','pto_log','messages','to_reqs'];
 const _cache = { settings:{}, employees:{}, entries:{}, pto_log:{}, messages:{}, to_reqs:{} };
+const _pristine = { settings:{}, employees:{}, entries:{}, pto_log:{}, messages:{}, to_reqs:{} }; // The pristine backup
 const _ready = new Set();
 let _fbError = false;
 
-// Convert Firebase object (keyed by id) → array
 const toArr = obj => obj && typeof obj === 'object' ? Object.values(obj) : [];
+
+// Environment Detection
+const isTestEnv = window.location.href.includes('test.html');
+const dbPath = col => isTestEnv ? 'test_' + col : col;
 
 // Real-time listeners — one per collection
 COLS.forEach(col => {
-  fdb.ref(col).on('value',
+  fdb.ref(dbPath(col)).on('value',
     snap => {
       _cache[col] = snap.val() || {};
+      _pristine[col] = JSON.parse(JSON.stringify(_cache[col])); // Save a pristine copy for comparison
       _ready.add(col);
       render();
     },
@@ -351,7 +356,6 @@ COLS.forEach(col => {
     }
   );
 });
-
 function fbReady(){ return COLS.every(c => _ready.has(c)); }
 
 function autoCloseStaleOpenEntries(){
