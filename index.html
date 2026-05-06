@@ -404,7 +404,6 @@ function fbSet(col, arr){
   // 2. Add changed or new items
   arr.forEach(item => { 
     if(item && item.id) {
-       // Compare against the pristine backup we made in Step 1
        if (JSON.stringify(item) !== JSON.stringify(pristine[item.id])) {
            updates[item.id] = item;
        }
@@ -416,31 +415,32 @@ function fbSet(col, arr){
   arr.forEach(item => { if(item && item.id) obj[item.id] = item; });
   _cache[col] = obj;
 
-  // 4. Send ONLY the specific changes to Firebase using .update()
+  // 4. Send ONLY the specific changes to Firebase and RETURN a Promise receipt
   if (Object.keys(updates).length > 0) {
-      fdb.ref(dbPath(col)).update(updates).catch(e => console.error('Firebase write error:', e));
+      return fdb.ref(dbPath(col)).update(updates);
   }
+  return Promise.resolve();
 }
 
 function fbSetObj(col, obj){
   _cache[col] = obj || {};
-  fdb.ref(dbPath(col)).set(obj || {}).catch(e => console.error('Firebase write error:', e));
+  return fdb.ref(dbPath(col)).set(obj || {});
 }
 
 // ─── DATA ─────────────────────────────────────────────────────────────────────
 const DB = {
   cfg(){ return Object.assign({adminPassword:'admin123',companyName:'Bright Beginnings',accrualRate:1/30,accrualOn:true}, _cache.settings); },
-  saveCfg(c){ fbSetObj('settings', c); },
+  saveCfg(c){ return fbSetObj('settings', c); },
   emps(){ return toArr(_cache.employees); },
-  saveEmps(arr){ fbSet('employees', arr); },
+  saveEmps(arr){ return fbSet('employees', arr); },
   entries(){ return toArr(_cache.entries); },
-  saveEntries(arr){ fbSet('entries', arr); },
+  saveEntries(arr){ return fbSet('entries', arr); },
   ptoLog(){ return toArr(_cache.pto_log); },
-  savePTOLog(arr){ fbSet('pto_log', arr); },
+  savePTOLog(arr){ return fbSet('pto_log', arr); },
   msgs(){ return toArr(_cache.messages); },
-  saveMsgs(arr){ fbSet('messages', arr); },
+  saveMsgs(arr){ return fbSet('messages', arr); },
   toReqs(){ return toArr(_cache.to_reqs); },
-  saveToReqs(arr){ fbSet('to_reqs', arr); },
+  saveToReqs(arr){ return fbSet('to_reqs', arr); },
 };
 function getActive(empId){return DB.entries().find(e=>e.employeeId===empId&&!e.clockOut)||null;}
 function getMsgs(entryId){return DB.msgs().filter(m=>m.entryId===entryId).sort((a,b)=>new Date(a.ts)-new Date(b.ts));}
