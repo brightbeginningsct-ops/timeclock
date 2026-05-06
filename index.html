@@ -294,7 +294,7 @@ function resetIdleTimer(){
     if(!isIdleProtectedScreen())return;
     clearInterval(window._clk);
     set({screen:'home',selEmp:null,pin:'',editEntryId:null,adjPTO:null,addEmp:false,editEmpId:null,noteModal:null,addTOReq:false,selCalDay:null,torSelDay:null});
-    toast('Returned to home after 20 seconds of inactivity.','error');
+    toast('Returned to home due to inactivity.','error');
   },IDLE_TIMEOUT_MS);
 }
 function bindIdleTracking(){
