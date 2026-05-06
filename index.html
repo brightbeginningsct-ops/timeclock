@@ -334,6 +334,13 @@ const _pristine = { settings:{}, employees:{}, entries:{}, pto_log:{}, messages:
 const _ready = new Set();
 let _fbError = false;
 
+// Wi-Fi Connection Detector
+let _isConnected = true;
+fdb.ref('.info/connected').on('value', snap => {
+  _isConnected = snap.val() === true;
+  render();
+});
+
 const toArr = obj => obj && typeof obj === 'object' ? Object.values(obj) : [];
 
 // Environment Detection
