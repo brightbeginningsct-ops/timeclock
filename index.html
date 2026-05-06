@@ -974,38 +974,81 @@ function act(a,d={}){
     }
     case 'pin-del': if(S.pin.length>0)set({pin:S.pin.slice(0,-1)}); break;
 
-    // Clock in/out
-    case 'toggle-clock':{
+case 'toggle-clock':{
       const emp=DB.emps().find(e=>e.id===S.selEmp);if(!emp)break;
+      
+      // 1. Instantly freeze the button so they cannot click it twice or leave
+      const btn = document.querySelector('.ck-btn');
+      if(btn) { btn.innerHTML = '⏳ Syncing... DO NOT CLOSE'; btn.style.pointerEvents = 'none'; btn.style.opacity = '0.8'; }
+
       const noteText=(document.getElementById('clock-note')||{}).value?.trim()||'';
       const entries=DB.entries();
       const active=entries.find(e=>e.employeeId===emp.id&&!e.clockOut);
+
+      // Setup our "Receipt" trackers
+      let p1 = Promise.resolve(), p2 = Promise.resolve(), p3 = Promise.resolve(), p4 = Promise.resolve();
+
       if(active){
+        // Existing Break & Clock Out Logic (Untouched)
         active.clockOut=new Date().toISOString();
         if(Array.isArray(active.breaks)&&active.breaks.length){
           const lb=active.breaks[active.breaks.length-1];
           if(lb&&lb.start&&!lb.end)lb.end=active.clockOut;
         }
         if(noteText)active.note=noteText;
-        DB.saveEntries(entries);
+        p1 = DB.saveEntries(entries);
+
+        // Existing PTO Accrual Logic (Untouched)
         const cfg=DB.cfg();
         if(cfg.accrualOn){
           const hrs=workedHours(active);
           const rate=emp.customRate!=null?emp.customRate:cfg.accrualRate;
           const accrued=hrs*rate;
           const emps=DB.emps();const idx=emps.findIndex(e=>e.id===emp.id);
-          emps[idx].ptoBalance=(emps[idx].ptoBalance||0)+accrued;DB.saveEmps(emps);
-          const log=DB.ptoLog();log.push({id:genId(),empId:emp.id,date:new Date().toISOString(),amount:accrued,note:`Auto-accrued (${fH(hrs)}h worked)`});DB.savePTOLog(log);
+          emps[idx].ptoBalance=(emps[idx].ptoBalance||0)+accrued;
+          p2 = DB.saveEmps(emps);
+          const log=DB.ptoLog();log.push({id:genId(),empId:emp.id,date:new Date().toISOString(),amount:accrued,note:`Auto-accrued (${fH(hrs)}h worked)`});
+          p3 = DB.savePTOLog(log);
         }
-        if(noteText){const msgs=DB.msgs();msgs.push({id:genId(),entryId:active.id,author:'staff',authorId:emp.id,authorName:emp.name,text:noteText,ts:new Date().toISOString(),adminRead:false});DB.saveMsgs(msgs);}
-        toast(`Clocked out! See you, ${emp.name.split(' ')[0]}! 👋`);
-      }else{
+        
+        // Existing Note Logic (Untouched)
+        if(noteText){
+          const msgs=DB.msgs();
+          msgs.push({id:genId(),entryId:active.id,author:'staff',authorId:emp.id,authorName:emp.name,text:noteText,ts:new Date().toISOString(),adminRead:false});
+          p4 = DB.saveMsgs(msgs);
+        }
+
+        // 2. WAIT for the database to send back the receipts before succeeding
+        Promise.all([p1, p2, p3, p4]).then(() => {
+           toast(`Clocked out! See you, ${emp.name.split(' ')[0]}! 👋`);
+           render();setTimeout(()=>set({screen:'home',selEmp:null}),2200);
+        }).catch(e => {
+           toast('Network Error! Please wait a moment and try again.','error');
+           if(btn) { btn.textContent = '⏹ Clock Out'; btn.style.pointerEvents = 'auto'; btn.style.opacity = '1'; }
+        });
+
+      } else {
+        // Existing Clock In Logic (Untouched)
         const ne={id:genId(),employeeId:emp.id,clockIn:new Date().toISOString(),clockOut:null,note:noteText||null};
-        entries.push(ne);DB.saveEntries(entries);
-        if(noteText){const msgs=DB.msgs();msgs.push({id:genId(),entryId:ne.id,author:'staff',authorId:emp.id,authorName:emp.name,text:noteText,ts:new Date().toISOString(),adminRead:false});DB.saveMsgs(msgs);}
-        toast(`Clocked in! Have a great shift! 🌟`);
+        entries.push(ne);
+        p1 = DB.saveEntries(entries);
+        
+        if(noteText){
+          const msgs=DB.msgs();
+          msgs.push({id:genId(),entryId:ne.id,author:'staff',authorId:emp.id,authorName:emp.name,text:noteText,ts:new Date().toISOString(),adminRead:false});
+          p4 = DB.saveMsgs(msgs);
+        }
+
+        // 2. WAIT for the database to send back the receipts before succeeding
+        Promise.all([p1, p4]).then(() => {
+           toast(`Clocked in! Have a great shift! 🌟`);
+           render();setTimeout(()=>set({screen:'home',selEmp:null}),2200);
+        }).catch(e => {
+           toast('Network Error! Please wait a moment and try again.','error');
+           if(btn) { btn.textContent = '▶ Clock In'; btn.style.pointerEvents = 'auto'; btn.style.opacity = '1'; }
+        });
       }
-      render();setTimeout(()=>set({screen:'home',selEmp:null}),2200);break;
+      break;
     }
 
     // Employee note modal
