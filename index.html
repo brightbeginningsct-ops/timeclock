@@ -1187,9 +1187,31 @@ case 'toggle-clock':{
         emp.ptoBalance = Math.max(0, (emp.ptoBalance || 0) - (oldHrs * rate));
       }
 
-      // 2. APPLY EDITS
-      entries[idx]={...entries[idx],employeeId:ee,clockIn:new Date(ei).toISOString(),clockOut:eo?new Date(eo).toISOString():null,note:en||entries[idx].note||null,flagReviewed:reviewed,breaks:(bs && be ? [{start:new Date(bs).toISOString(), end:new Date(be).toISOString()}] : [])};
-      if(prev.employeeId!==entries[idx].employeeId||prev.clockIn!==entries[idx].clockIn||prev.clockOut!==entries[idx].clockOut)addFlag(entries[idx],'manual_edit');
+      // 2. SMART EDIT CHECK (Ignore lost seconds)
+      const inChanged = ei !== toLocal(prev.clockIn);
+      const outChanged = eo !== (prev.clockOut ? toLocal(prev.clockOut) : '');
+      const bsChanged = bs !== (prev.breaks && prev.breaks[0] ? toLocal(prev.breaks[0].start) : '');
+      const beChanged = be !== (prev.breaks && prev.breaks[0] && prev.breaks[0].end ? toLocal(prev.breaks[0].end) : '');
+
+      const finalIn = inChanged ? new Date(ei).toISOString() : prev.clockIn;
+      const finalOut = outChanged ? (eo ? new Date(eo).toISOString() : null) : prev.clockOut;
+      const finalBs = bsChanged ? (bs ? new Date(bs).toISOString() : null) : (prev.breaks && prev.breaks[0] ? prev.breaks[0].start : null);
+      const finalBe = beChanged ? (be ? new Date(be).toISOString() : null) : (prev.breaks && prev.breaks[0] ? prev.breaks[0].end : null);
+
+      entries[idx]={
+        ...entries[idx],
+        employeeId:ee,
+        clockIn:finalIn,
+        clockOut:finalOut,
+        note:en||entries[idx].note||null,
+        flagReviewed:reviewed,
+        breaks: (finalBs ? [{start: finalBs, end: finalBe}] : [])
+      };
+      
+      // Only add the manual edit flag if a time or name was ACTUALLY changed
+      if(prev.employeeId !== entries[idx].employeeId || inChanged || outChanged || bsChanged || beChanged) {
+          addFlag(entries[idx],'manual_edit');
+      }
       
       // 3. APPLY NEW PTO
       if(entries[idx].clockOut && emp && cfg.accrualOn) {
