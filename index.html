@@ -354,12 +354,16 @@ COLS.forEach(col => {
       _cache[col] = snap.val() || {};
       _pristine[col] = JSON.parse(JSON.stringify(_cache[col])); // Save a pristine copy for comparison
       _ready.add(col);
-      render();
+      
+      // Sync Shield & Do Not Disturb: Do not redraw while syncing or editing
+      const isBusy = typeof S !== 'undefined' && (S.isSyncing || S.editEntryId || S.adjPTO || S.noteModal || S.addTOReq || S.editEmpId || S.addEmp);
+      if (!isBusy) render();
     },
     err => {
       console.error('Firebase error on', col, err);
       _fbError = true;
-      render();
+      const isBusy = typeof S !== 'undefined' && (S.isSyncing || S.editEntryId || S.adjPTO || S.noteModal || S.addTOReq || S.editEmpId || S.addEmp);
+      if (!isBusy) render();
     }
   );
 });
