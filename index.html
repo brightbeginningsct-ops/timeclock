@@ -981,9 +981,10 @@ function act(a,d={}){
 case 'toggle-clock':{
       const emp=DB.emps().find(e=>e.id===S.selEmp);if(!emp)break;
       
-      // 1. Instantly freeze the button so they cannot click it twice or leave
+      // 1. Instantly freeze the button and raise the Sync Shield
       const btn = document.querySelector('.ck-btn');
       if(btn) { btn.innerHTML = '⏳ Syncing... DO NOT CLOSE'; btn.style.pointerEvents = 'none'; btn.style.opacity = '0.8'; }
+      S.isSyncing = true;
 
       const noteText=(document.getElementById('clock-note')||{}).value?.trim()||'';
       const entries=DB.entries();
@@ -1024,9 +1025,11 @@ case 'toggle-clock':{
 
         // 2. WAIT for the database to send back the receipts before succeeding
         Promise.all([p1, p2, p3, p4]).then(() => {
+           S.isSyncing = false;
            toast(`Clocked out! See you, ${emp.name.split(' ')[0]}! 👋`);
            render();setTimeout(()=>set({screen:'home',selEmp:null}),2200);
         }).catch(e => {
+           S.isSyncing = false;
            toast('Network Error! Please wait a moment and try again.','error');
            if(btn) { btn.textContent = '⏹ Clock Out'; btn.style.pointerEvents = 'auto'; btn.style.opacity = '1'; }
         });
@@ -1045,9 +1048,11 @@ case 'toggle-clock':{
 
         // 2. WAIT for the database to send back the receipts before succeeding
         Promise.all([p1, p4]).then(() => {
+           S.isSyncing = false;
            toast(`Clocked in! Have a great shift! 🌟`);
            render();setTimeout(()=>set({screen:'home',selEmp:null}),2200);
         }).catch(e => {
+           S.isSyncing = false;
            toast('Network Error! Please wait a moment and try again.','error');
            if(btn) { btn.textContent = '▶ Clock In'; btn.style.pointerEvents = 'auto'; btn.style.opacity = '1'; }
         });
