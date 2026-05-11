@@ -547,8 +547,8 @@ function Emp(){
 function EmpTimecards(){
   const emp=DB.emps().find(e=>e.id===S.selEmp);if(!emp){S.screen='home';return Home();}
   let entries=DB.entries().filter(e=>e.employeeId===emp.id&&e.clockOut);
-  if(S.ehStart)entries=entries.filter(e=>new Date(e.clockIn)>=new Date(S.ehStart));
-  if(S.ehEnd){const en=new Date(S.ehEnd);en.setHours(23,59,59,999);entries=entries.filter(e=>new Date(e.clockIn)<=en);}
+  if(S.ehStart)entries=entries.filter(e=>new Date(e.clockIn)>=new Date(S.ehStart+'T00:00:00'));
+  if(S.ehEnd){const en=new Date(S.ehEnd+'T00:00:00');en.setHours(23,59,59,999);entries=entries.filter(e=>new Date(e.clockIn)<=en);}
   entries=entries.sort((a,b)=>new Date(b.clockIn)-new Date(a.clockIn));
   const totals=entries.reduce((s,e)=>{const h=workedHours(e);const x=splitOT(h);s.total+=h;s.reg+=x.reg;s.ot+=x.ot;return s;},{total:0,reg:0,ot:0});
   const rows=entries.length===0
