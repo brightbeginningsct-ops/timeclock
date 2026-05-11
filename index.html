@@ -334,12 +334,24 @@ const _pristine = { settings:{}, employees:{}, entries:{}, pto_log:{}, messages:
 const _ready = new Set();
 let _fbError = false;
 
-// Wi-Fi Connection Detector
+// Wi-Fi Connection Detector & Deep Sleep Watchdog
 let _isConnected = true;
 fdb.ref('.info/connected').on('value', snap => {
   _isConnected = snap.val() === true;
   render();
 });
+
+// Watchdog: If the tablet OS pauses this 1-second timer, we know it went to sleep.
+let _lastTick = Date.now();
+setInterval(() => {
+  const now = Date.now();
+  // If more than 15 seconds passed between ticks, the tablet was in a deep sleep.
+  if (now - _lastTick > 15000) {
+    fdb.goOffline();
+    setTimeout(() => { fdb.goOnline(); }, 500);
+  }
+  _lastTick = now;
+}, 1000);
 
 const toArr = obj => obj && typeof obj === 'object' ? Object.values(obj) : [];
 
