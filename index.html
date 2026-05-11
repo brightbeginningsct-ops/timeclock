@@ -1099,17 +1099,47 @@ case 'toggle-clock':{
       if(!active){toast('You are not clocked in','error');break;}
       active.breaks=Array.isArray(active.breaks)?active.breaks:[];
       if(isOnBreak(active)){toast('Break already running','error');break;}
+      
+      const btn = document.querySelector('[data-a="start-break"]');
+      if(btn) { btn.innerHTML = '⏳ Syncing...'; btn.style.pointerEvents = 'none'; btn.style.opacity = '0.8'; }
+      S.isSyncing = true;
+
       active.breaks.push({start:new Date().toISOString(),end:null});
-      DB.saveEntries(entries);toast('Break started ⏸');render();break;
+      
+      DB.saveEntries(entries).then(() => {
+        S.isSyncing = false;
+        toast('Break started ⏸');
+        render();
+      }).catch(e => {
+        S.isSyncing = false;
+        toast('Network Error! Try again.','error');
+        if(btn) { btn.innerHTML = '⏸ Start Break'; btn.style.pointerEvents = 'auto'; btn.style.opacity = '1'; }
+      });
+      break;
     }
     case 'end-break':{
       const emp=DB.emps().find(e=>e.id===S.selEmp);if(!emp)break;
       const entries=DB.entries();
       const active=entries.find(e=>e.employeeId===emp.id&&!e.clockOut);
       if(!active||!isOnBreak(active)){toast('No active break to end','error');break;}
+      
+      const btn = document.querySelector('[data-a="end-break"]');
+      if(btn) { btn.innerHTML = '⏳ Syncing...'; btn.style.pointerEvents = 'none'; btn.style.opacity = '0.8'; }
+      S.isSyncing = true;
+
       const lb=active.breaks[active.breaks.length-1];
       lb.end=new Date().toISOString();
-      DB.saveEntries(entries);toast('Break ended ▶');render();break;
+      
+      DB.saveEntries(entries).then(() => {
+        S.isSyncing = false;
+        toast('Break ended ▶');
+        render();
+      }).catch(e => {
+        S.isSyncing = false;
+        toast('Network Error! Try again.','error');
+        if(btn) { btn.innerHTML = '▶ End Break'; btn.style.pointerEvents = 'auto'; btn.style.opacity = '1'; }
+      });
+      break;
     }
     case 'dismiss-missed-reminder':{
       const entries=DB.entries();
