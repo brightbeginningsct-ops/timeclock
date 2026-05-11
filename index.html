@@ -747,7 +747,8 @@ function AOverview(){
   <div class="sec-hdr"><div class="sec-ttl">Currently Clocked In</div><span class="badge bg">${inList.length} active</span></div>
   <div class="tbl-wrap" style="margin-bottom:16px">${inRows}</div>
   <div class="sec-hdr"><div class="sec-ttl">Clocked Out</div></div>
-  <div class="tbl-wrap">${outList.length===0?`<div style="color:var(--muted);padding:14px;text-align:center;font-weight:600">Everyone is clocked in ☀️</div>`:outList.map(e=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;border-bottom:1.5px solid var(--border)"><div style="font-weight:800;font-size:13px">${esc(e.name)}</div><span class="badge bm">○ Out</span></div>`).join('')}</div>`;
+  <div class="tbl-wrap">${outList.length===0?`<div style="color:var(--muted);padding:14px;text-align:center;font-weight:600">Everyone is clocked in ☀️</div>`:outList.map(e=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;border-bottom:1.5px solid var(--border)"><div style="font-weight:800;font-size:13px">${esc(e.name)}</div><span class="badge bm">○ Out</span></div>`).join('')}</div>
+  ${S.editEntryId ? EditEntryModal(emps) : ''}`;
 }
 
 function AStaff(){
