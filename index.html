@@ -381,6 +381,7 @@ COLS.forEach(col => {
 function fbReady(){ return COLS.every(c => _ready.has(c)); }
 
 function autoCloseStaleOpenEntries(){
+  if (S.screen !== 'admin') return;
   const entries=DB.entries();
   if(entries.length===0)return;
   const today=startDay(new Date());
