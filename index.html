@@ -1260,6 +1260,9 @@ case 'toggle-clock':{
         breaks: (finalBs ? [{start: finalBs, end: finalBe}] : [])
       };
       
+      // If Admin reviews the entry, permanently cancel the morning pop-up for the employee
+      if(reviewed) entries[idx].employeeReminderAck = true;
+      
       // Only add the manual edit flag if a time or name was ACTUALLY changed
       if(prev.employeeId !== entries[idx].employeeId || inChanged || outChanged || bsChanged || beChanged) {
           addFlag(entries[idx],'manual_edit');
