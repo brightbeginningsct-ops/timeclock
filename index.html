@@ -1084,11 +1084,19 @@ case 'toggle-clock':{
     }
     case 'submit-missed-reminder':{
       const entryId=d.entry;
-      const leaveTime=(document.getElementById('mr-time')||{}).value||'';
+      let leaveTime=(document.getElementById('mr-time')||{}).value||'';
+      
+      // Translate browser military time to standard AM/PM
+      if (leaveTime) {
+        const [h, m] = leaveTime.split(':');
+        leaveTime = `${parseInt(h) % 12 || 12}:${m} ${parseInt(h) >= 12 ? 'PM' : 'AM'}`;
+      }
+
       const note=(document.getElementById('mr-note')||{}).value?.trim()||'No additional note provided.';
       const entries=DB.entries();
       const idx=entries.findIndex(e=>e.id===entryId);
       if(idx<0)break;
+      
       entries[idx].employeeReminderAck=true;
       entries[idx].employeeReminderAt=new Date().toISOString();
       entries[idx].employeeReportedOutTime=leaveTime||null;
@@ -1096,11 +1104,14 @@ case 'toggle-clock':{
       entries[idx].flagReviewed=false;
       addFlag(entries[idx],'auto_clockout');
       DB.saveEntries(entries);
+      
       const emp=DB.emps().find(e=>e.id===S.selEmp);
       const msgs=DB.msgs();
       const timeText=leaveTime?`Reported leave time: ${leaveTime}. `:'';
+      
       msgs.push({id:genId(),entryId,author:'staff',authorId:emp?.id||'',authorName:emp?.name||'Staff',text:`Missed clock-out follow-up. ${timeText}${note}`,ts:new Date().toISOString(),adminRead:false});
       DB.saveMsgs(msgs);
+      
       toast('Thanks! Admin has been notified.');
       render();
       break;
