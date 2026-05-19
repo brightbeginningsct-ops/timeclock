@@ -1092,7 +1092,10 @@ case 'toggle-clock':{
         leaveTime = `${parseInt(h) % 12 || 12}:${m} ${parseInt(h) >= 12 ? 'PM' : 'AM'}`;
       }
 
-      const note=(document.getElementById('mr-note')||{}).value?.trim()||'No additional note provided.';
+      // Grab exactly what they typed to see if it is empty
+      const rawNote=(document.getElementById('mr-note')||{}).value?.trim();
+      const note=rawNote||'No additional note provided.';
+      
       const entries=DB.entries();
       const idx=entries.findIndex(e=>e.id===entryId);
       if(idx<0)break;
@@ -1105,12 +1108,15 @@ case 'toggle-clock':{
       addFlag(entries[idx],'auto_clockout');
       DB.saveEntries(entries);
       
-      const emp=DB.emps().find(e=>e.id===S.selEmp);
-      const msgs=DB.msgs();
-      const timeText=leaveTime?`Reported leave time: ${leaveTime}. `:'';
-      
-      msgs.push({id:genId(),entryId,author:'staff',authorId:emp?.id||'',authorName:emp?.name||'Staff',text:`Missed clock-out follow-up. ${timeText}${note}`,ts:new Date().toISOString(),adminRead:false});
-      DB.saveMsgs(msgs);
+      // ONLY send a message to the admin dashboard if they actually provided a time or a note
+      if (leaveTime || rawNote) {
+        const emp=DB.emps().find(e=>e.id===S.selEmp);
+        const msgs=DB.msgs();
+        const timeText=leaveTime?`Reported leave time: ${leaveTime}. `:'';
+        
+        msgs.push({id:genId(),entryId,author:'staff',authorId:emp?.id||'',authorName:emp?.name||'Staff',text:`Missed clock-out follow-up. ${timeText}${note}`,ts:new Date().toISOString(),adminRead:false});
+        DB.saveMsgs(msgs);
+      }
       
       toast('Thanks! Admin has been notified.');
       render();
