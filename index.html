@@ -768,7 +768,6 @@ function AStaff(){
   return`${form}<div class="sec-hdr"><div class="sec-ttl">All Staff (${emps.length})</div>${!S.addEmp&&!S.editEmpId?`<button class="btn btn-b btn-sm" data-a="show-add-emp">+ Add Staff</button>`:''}</div><div class="tbl-wrap"><table class="dtbl"><thead><tr><th>Name</th><th>Status</th><th>PIN</th><th>ADP ID</th><th>PTO Balance</th><th>Actions</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
-// ─── TIMESHEETS with OT breakdown & per-employee totals ─────────────────────
 function ATime(){
   const emps=DB.emps();
   let entries=DB.entries().filter(e=>e.clockOut);
@@ -778,14 +777,28 @@ function ATime(){
   if(S.fFlag==='flagged')entries=entries.filter(e=>hasUnresolvedFlags(e));
   entries=entries.sort((a,b)=>new Date(b.clockIn)-new Date(a.clockIn));
 
-  // Totals per employee
+  // WEEKLY OT MATH: Group hours by Sunday-Saturday week
   const empTotals={};
+  const empWeeks={};
   entries.forEach(e=>{
     const dur=workedHours(e);
-    const {reg,ot}=splitOT(dur);
-    if(!empTotals[e.employeeId])empTotals[e.employeeId]={reg:0,ot:0,total:0};
-    empTotals[e.employeeId].reg+=reg;empTotals[e.employeeId].ot+=ot;empTotals[e.employeeId].total+=dur;
+    // Find the Sunday of this shift's week
+    const d=new Date(e.clockIn); d.setDate(d.getDate()-d.getDay()); const wk=isoDate(d);
+    
+    if(!empWeeks[e.employeeId]) empWeeks[e.employeeId]={};
+    empWeeks[e.employeeId][wk]=(empWeeks[e.employeeId][wk]||0)+dur;
   });
+  
+  // Split each week's total at 40 hours
+  Object.entries(empWeeks).forEach(([empId,weeks])=>{
+    let reg=0,ot=0;
+    Object.values(weeks).forEach(wHrs=>{ 
+      reg += Math.min(wHrs, 40); 
+      ot += Math.max(0, wHrs - 40); 
+    });
+    empTotals[empId]={reg, ot, total: reg+ot};
+  });
+
   const grandReg=Object.values(empTotals).reduce((s,v)=>s+v.reg,0);
   const grandOT=Object.values(empTotals).reduce((s,v)=>s+v.ot,0);
   const grandTotal=grandReg+grandOT;
@@ -794,30 +807,28 @@ function ATime(){
   const rows=entries.length===0?`<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:22px">No entries found</td></tr>`:entries.map(e=>{
     const emp=emps.find(em=>em.id===e.employeeId);
     const dur=workedHours(e);
-    const {reg,ot}=splitOT(dur);
     const flags=getEntryFlags(e);
     const msgs=getMsgs(e.id);
     const noteCount=msgs.length+(e.note?1:0);
     const noteTd=noteCount>0?`<div class="note-pill">📝 ${esc(e.note||msgs[0]?.text||'')}${noteCount>1?` +${noteCount-1}`:''}</div>`:`<span style="color:var(--muted);font-size:11px">—</span>`;
     const flagTd=flags.length>0?`<div style="display:flex;gap:4px;flex-wrap:wrap">${flags.map(f=>`<span class="badge ${e.flagReviewed?'bm':'bo'}">${esc(flagLabel(f))}</span>`).join('')}</div>`:`<span style="color:var(--muted);font-size:11px">—</span>`;
-    return`<tr><td><strong>${emp?esc(emp.name):'?'}</strong></td><td style="font-size:11px;font-weight:600">${fDate(e.clockIn)}</td><td style="font-family:var(--mono);font-size:10px">${fTime(e.clockIn)}<br>${fTime(e.clockOut)}</td><td style="font-family:var(--mono)">${fH(reg)}h</td><td style="font-family:var(--mono);color:var(--ot)">${ot>0?fH(ot)+'h':'—'}</td><td>${flagTd}</td><td>${noteTd}</td><td><div style="display:flex;gap:3px"><button class="btn btn-g btn-sm" data-a="edit-entry" data-entry="${e.id}">Edit</button><button class="btn btn-r btn-sm" data-a="del-entry" data-entry="${e.id}">✕</button></div></td></tr>`;
+    
+    return`<tr><td><strong>${emp?esc(emp.name):'?'}</strong></td><td style="font-size:11px;font-weight:600">${fDate(e.clockIn)}</td><td style="font-family:var(--mono);font-size:10px">${fTime(e.clockIn)}<br>${fTime(e.clockOut)}</td><td style="font-family:var(--mono);font-weight:800">${fH(dur)}h</td><td style="font-family:var(--mono);color:var(--muted)">—</td><td>${flagTd}</td><td>${noteTd}</td><td><div style="display:flex;gap:3px"><button class="btn btn-g btn-sm" data-a="edit-entry" data-entry="${e.id}">Edit</button><button class="btn btn-r btn-sm" data-a="del-entry" data-entry="${e.id}">✕</button></div></td></tr>`;
   }).join('');
 
-  // Per-employee summary table (shown below)
   const summaryRows=Object.entries(empTotals).map(([id,v])=>{
     const emp=emps.find(e=>e.id===id);
     return`<tr><td><strong>${emp?esc(emp.name):'?'}</strong></td><td style="font-family:var(--mono)">${fH(v.reg)}h</td><td style="font-family:var(--mono);color:var(--ot)">${v.ot>0?fH(v.ot)+'h':'—'}</td><td style="font-family:var(--mono);font-weight:800">${fH(v.total)}h</td></tr>`;
   }).join('');
   const summarySection=Object.keys(empTotals).length>0?`<div class="sec-hdr" style="margin-top:18px"><div class="sec-ttl">Pay Period Summary</div></div>
-  <div class="tbl-wrap"><table class="dtbl"><thead><tr><th>Employee</th><th>Regular Hrs</th><th>OT Hrs (&gt;8/day)</th><th>Total Hrs</th></tr></thead><tbody>${summaryRows}</tbody><tfoot><tr><td><strong>TOTAL</strong></td><td style="font-family:var(--mono)">${fH(grandReg)}h</td><td style="font-family:var(--mono);color:var(--ot)">${grandOT>0?fH(grandOT)+'h':'—'}</td><td style="font-family:var(--mono)">${fH(grandTotal)}h</td></tr></tfoot></table></div>`:'';
+  <div class="tbl-wrap"><table class="dtbl"><thead><tr><th>Employee</th><th>Regular Hrs</th><th>OT Hrs (&gt;40/wk)</th><th>Total Hrs</th></tr></thead><tbody>${summaryRows}</tbody><tfoot><tr><td><strong>TOTAL</strong></td><td style="font-family:var(--mono)">${fH(grandReg)}h</td><td style="font-family:var(--mono);color:var(--ot)">${grandOT>0?fH(grandOT)+'h':'—'}</td><td style="font-family:var(--mono)">${fH(grandTotal)}h</td></tr></tfoot></table></div>`:'';
 
   return`<div class="filters"><select id="fe" data-action="fEmp"><option value="all" ${S.fEmp==='all'?'selected':''}>All Staff</option>${empOpts}</select><input type="date" id="fs" value="${S.fStart}" data-action="fStart"/><input type="date" id="fd" value="${S.fEnd}" data-action="fEnd"/><select id="ff" data-action="fFlag"><option value="all" ${S.fFlag==='all'?'selected':''}>All Entries</option><option value="flagged" ${S.fFlag==='flagged'?'selected':''}>Flagged Only</option></select></div>
   <div class="sec-hdr"><div class="sec-ttl">Time Entries <span style="color:var(--muted);font-size:13px;font-weight:400">(${entries.length})</span></div><div style="display:flex;gap:7px;align-items:center"><span style="font-size:12px;color:var(--text2);font-weight:700">Total: <strong style="color:var(--bl-dk);font-family:var(--mono)">${fH(grandTotal)}h</strong>${grandOT>0?` <strong style="color:var(--ot);font-family:var(--mono)">(${fH(grandOT)}h OT)</strong>`:''}</span><button class="btn btn-g btn-sm" data-a="new-entry" style="margin-right:8px;">+ New Timecard</button><button class="btn btn-g btn-sm" data-a="export-csv">⬇ CSV</button></div></div>
-  <div class="tbl-wrap"><table class="dtbl"><thead><tr><th>Staff</th><th>Date</th><th>In / Out</th><th>Reg Hrs</th><th>OT Hrs</th><th>Flags</th><th>Notes</th><th>Actions</th></tr></thead><tbody>${rows}</tbody></table></div>
+  <div class="tbl-wrap"><table class="dtbl"><thead><tr><th>Staff</th><th>Date</th><th>In / Out</th><th>Shift Total</th><th>OT Flag</th><th>Flags</th><th>Notes</th><th>Actions</th></tr></thead><tbody>${rows}</tbody></table></div>
   ${summarySection}
   ${S.editEntryId?EditEntryModal(emps):''}`;
 }
-
 function EditEntryModal(emps){
   const entry=DB.entries().find(e=>e.id===S.editEntryId);if(!entry)return'';
   const msgs=getMsgs(entry.id);
