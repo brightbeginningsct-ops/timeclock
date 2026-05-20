@@ -306,8 +306,8 @@ function clockStr(){const n=new Date(),h=n.getHours(),m=n.getMinutes(),s=n.getSe
 function dateStr(){const n=new Date();return`${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][n.getDay()]}, ${['January','February','March','April','May','June','July','August','September','October','November','December'][n.getMonth()]} ${n.getDate()}, ${n.getFullYear()}`;}
 function startDay(d){const x=new Date(d);x.setHours(0,0,0,0);return x;}
 function startWeek(d){const x=new Date(d);x.setDate(x.getDate()-x.getDay());x.setHours(0,0,0,0);return x;}
-// OT: >8h/day = daily OT for excess; >40h/week = weekly OT (use daily OT here, weekly shown in report)
-function splitOT(hrs){return{reg:Math.min(hrs,8),ot:Math.max(0,hrs-8)};}
+// Daily OT disabled. Weekly OT (>40hrs) is handled exclusively in the admin summaries.
+function splitOT(hrs){return{reg:hrs,ot:0};}
 
 // ─── FIREBASE SETUP ──────────────────────────────────────────────────────────
 
