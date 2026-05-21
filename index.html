@@ -1421,7 +1421,7 @@ case 'export-csv':{
       if(S.fStart)entries=entries.filter(e=>new Date(e.clockIn)>=new Date(S.fStart+'T00:00:00'));
       if(S.fEnd){const en=new Date(S.fEnd+'T00:00:00');en.setHours(23,59,59,999);entries=entries.filter(e=>new Date(e.clockIn)<=en);}
 
-      // 1. Group by week and calculate >40h Overtime
+      // Group by week and calculate >40h Overtime
       const empTotals={};
       const empWeeks={};
       entries.forEach(e=>{
@@ -1436,37 +1436,37 @@ case 'export-csv':{
         empTotals[empId]={reg,ot};
       });
 
-      // 2. Format dates into MM/DD/YYYY for ADP
       const fmtDate = (ds) => ds ? new Date(ds).toLocaleDateString('en-US', {timeZone:'UTC'}) : '';
       const startDate = fmtDate(S.fStart);
       const endDate = fmtDate(S.fEnd);
 
-      // 3. Build ADP formatted CSV string (Now including Employee Name)
+      // Restore strict ADP Generic V2.0 format (No Employee Name column)
       let csv = "##GENERIC## V2.0\n";
-      csv += "Employee Name,IID,Pay Frequency,Pay Period Start,Pay Period End,Employee Id,Earnings Code,Pay Hours,Dollars,Separate Check,Department Number,Rate Code,Job Code\n";
+      csv += "IID,Pay Frequency,Pay Period Start,Pay Period End,Employee Id,Earnings Code,Pay Hours,Dollars,Separate Check,Department Number,Rate Code,Job Code\n";
 
+      let rows = [];
       Object.entries(empTotals).forEach(([empId, totals]) => {
         const emp = emps.find(e => e.id === empId);
         if(!emp) return;
         const adpId = emp.adpId || '';
-        const empName = emp.name.replace(/,/g, ''); // strip commas just in case
 
-        // Add a row for Regular Hours
+        // Build array of exactly 12 columns to guarantee perfect comma placement
         if(totals.reg > 0) {
-          csv += `"${empName}",,,${startDate},${endDate},${adpId},REG,${totals.reg.toFixed(2)},,,,,\n`;
+          rows.push(['', '', startDate, endDate, adpId, 'REG', totals.reg.toFixed(2), '', '', '', '', ''].join(','));
         }
-        // Add a separate row for Overtime Hours
         if(totals.ot > 0) {
-          csv += `"${empName}",,,${startDate},${endDate},${adpId},OVT,${totals.ot.toFixed(2)},,,,,\n`;
+          rows.push(['', '', startDate, endDate, adpId, 'OVT', totals.ot.toFixed(2), '', '', '', '', ''].join(','));
         }
       });
+      
+      // Join rows without a trailing newline to prevent the "empty row" error
+      csv += rows.join('\n');
 
-      // 4. Trigger the download
       const a=document.createElement('a');
       a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
       a.download=`ADP_Timesheets_${new Date().toISOString().slice(0,10)}.csv`;
       a.click();
-      toast('ADP Ready CSV Exported! ⬇️');
+      toast('Strict ADP CSV Exported! ⬇️');
       break;
     }
    } 
