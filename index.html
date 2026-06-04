@@ -1085,14 +1085,26 @@ case 'toggle-clock':{
         });
 
       } else {
+        // GLOBAL RESTRICTION: Block clock-ins before 6:50 AM
+        const now = new Date();
+        const hrs = now.getHours();
+        const mins = now.getMinutes();
+        
+        if (hrs < 6 || (hrs === 6 && mins < 50)) {
+           S.isSyncing = false;
+           if(btn) { btn.textContent = '▶ Clock In'; btn.style.pointerEvents = 'auto'; btn.style.opacity = '1'; }
+           toast('Too early! Clock-ins unlock at 6:50 AM.','error');
+           break;
+        }
+
         // Existing Clock In Logic (Untouched)
-        const ne={id:genId(),employeeId:emp.id,clockIn:new Date().toISOString(),clockOut:null,note:noteText||null};
+        const ne={id:genId(),employeeId:emp.id,clockIn:now.toISOString(),clockOut:null,note:noteText||null};
         entries.push(ne);
         p1 = DB.saveEntries(entries);
         
         if(noteText){
           const msgs=DB.msgs();
-          msgs.push({id:genId(),entryId:ne.id,author:'staff',authorId:emp.id,authorName:emp.name,text:noteText,ts:new Date().toISOString(),adminRead:false});
+          msgs.push({id:genId(),entryId:ne.id,author:'staff',authorId:emp.id,authorName:emp.name,text:noteText,ts:now.toISOString(),adminRead:false});
           p4 = DB.saveMsgs(msgs);
         }
 
