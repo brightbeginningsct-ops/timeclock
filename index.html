@@ -1463,6 +1463,8 @@ case 'export-csv':{
         const adpId = emp.adpId || '';
 
         // Build array of exactly 12 columns to guarantee perfect comma placement
+        const compCode = '25690575 KB/NNB';
+        
         if(totals.reg > 0) {
           rows.push(['', '', startDate, endDate, adpId, 'REG', totals.reg.toFixed(2), '', '', '', '', ''].join(','));
         }
