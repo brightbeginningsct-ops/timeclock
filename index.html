@@ -267,6 +267,34 @@ function getEntryFlags(entry){
   if(entry?.clockOut&&hrs>12)flags.add('long_shift');
   if(entry?.clockOut&&raw<0)flags.add('invalid_duration');
   if(entry?.clockOut&&hrs>6&&breakHours(entry)===0)flags.add('missing_break');
+
+  // NEW: Cross-reference with other entries to find duplicates or overlaps
+  if(entry?.clockOut && entry?.employeeId) {
+    const allEntries = DB.entries();
+    const entryStart = new Date(entry.clockIn);
+    const entryEnd = new Date(entry.clockOut);
+    const entryDate = isoDate(entry.clockIn);
+
+    allEntries.forEach(other => {
+      // Only compare against different completed entries for the SAME employee
+      if(other.id === entry.id || other.employeeId !== entry.employeeId || !other.clockOut) return;
+      
+      const otherStart = new Date(other.clockIn);
+      const otherEnd = new Date(other.clockOut);
+      const otherDate = isoDate(other.clockIn);
+
+      // 1. Check for strict time overlap
+      if(entryStart < otherEnd && entryEnd > otherStart) {
+        flags.add('overlapping_shift');
+      }
+
+      // 2. Check for duplicate entries on the same day
+      if(entryDate === otherDate) {
+        flags.add('duplicate_day');
+      }
+    });
+  }
+  
   return [...flags];
 }
 function hasUnresolvedFlags(entry){return getEntryFlags(entry).length>0&&!entry.flagReviewed;}
@@ -276,7 +304,9 @@ function flagLabel(f){
     long_shift:'Long Shift',
     invalid_duration:'Invalid Time',
     missing_break:'No Break Logged',
-    manual_edit:'Manual Edit'
+    manual_edit:'Manual Edit',
+    overlapping_shift:'⚠️ Overlapping Shift',
+    duplicate_day:'⚠️ Multiple Shifts/Day'
   })[f]||f;
 }
 function shouldShowMissedClockReminder(entry){
