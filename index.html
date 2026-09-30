@@ -737,6 +737,39 @@ function TORPage(){
 // ════════════════════════════════════════════════════════════════════════
 // ADMIN LOGIN
 // ════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════
+// BULLETIN BOARD
+// ════════════════════════════════════════════════════════════════════════
+function Board(){
+  const emp=DB.emps().find(e=>e.id===S.selEmp);if(!emp){S.screen='home';return Home();}
+  const posts=DB.bulletin();
+  const rows=posts.length===0?`<div style="color:var(--muted);text-align:center;padding:30px;font-weight:600">No posts yet. Be the first! 🌟</div>`:posts.map(p=>{
+    const isShout=p.type==='shoutout';
+    return `<div class="card" style="margin-bottom:10px;border-color:var(--${isShout?'yellow':'blue'});background:var(--${isShout?'yw-lt':'surface'})">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="badge ${isShout?'by':'bb'}">${isShout?'🌟 Shout-Out':'📢 Announcement'}</span>
+          <strong style="font-size:13px">${esc(p.authorName)}</strong>
+        </div>
+        <div style="font-size:10px;color:var(--muted);font-weight:700">${fDate(p.ts)}</div>
+      </div>
+      <div style="font-size:14px;line-height:1.4;color:var(--text);white-space:pre-wrap">${esc(p.text)}</div>
+    </div>`;
+  }).join('');
+
+  return `<div class="emp-dash" style="overflow-y:auto">
+    <div class="emp-hdr"><button class="bk-btn" data-a="go-emp">←</button><div><div class="emp-greet">Bulletin Board</div><div class="emp-name">Team Updates</div></div></div>
+    <div class="card" style="margin-bottom:14px">
+      <div class="field"><textarea id="bb-text" placeholder="Write a shout-out to a coworker or a team announcement..." rows="3"></textarea></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="bb-type" style="width:auto;flex:1"><option value="shoutout">🌟 Shout-Out</option><option value="announcement">📢 Announcement</option></select>
+        <button class="btn btn-b" data-a="post-bb">Post</button>
+      </div>
+    </div>
+    <div style="font-family:var(--display);font-size:16px;margin-bottom:10px;color:var(--text)">Recent Posts</div>
+    <div style="padding-bottom:20px">${rows}</div>
+  </div>`;
+}  
 function AdminLogin(){
   return`<div class="adm-login"><div style="width:100%;max-width:350px"><div style="width:68px;height:68px;background:var(--yellow);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 16px;box-shadow:0 4px 18px rgba(249,197,34,.5)">🔑</div><div style="text-align:center;margin-bottom:22px"><div style="font-family:var(--display);font-size:28px;color:var(--text)">Admin Login</div><div style="color:var(--text2);font-size:13px;font-weight:600;margin-top:3px">Bright Beginnings Staff Portal</div></div><div class="card" style="box-shadow:var(--sh2)"><div class="field"><label>Password</label><input type="password" id="apw" placeholder="Enter admin password" autocomplete="off"/></div><button class="btn btn-b btn-full" data-a="admin-login" style="margin-bottom:9px">Login →</button><button class="btn btn-g btn-full" data-a="go-home">← Back to Clock</button><div style="margin-top:13px;text-align:center;font-size:11px;color:var(--muted)">Default: <strong>admin123</strong> · Change in Settings</div></div></div></div>`;
 }
