@@ -358,9 +358,9 @@ firebase.initializeApp(firebaseConfig);
 const fdb = firebase.database();
 
 // ─── LOCAL CACHE (filled by Firebase listeners) ───
-const COLS = ['settings','employees','entries','pto_log','messages','to_reqs','bulletin'];
-const _cache = { settings:{}, employees:{}, entries:{}, pto_log:{}, messages:{}, to_reqs:{}, bulletin:{} };
-const _pristine = { settings:{}, employees:{}, entries:{}, pto_log:{}, messages:{}, to_reqs:{}, bulletin:{} }; // The pristine backup
+const COLS = ['settings','employees','entries','pto_log','messages','to_reqs','bulletin','tickets'];
+const _cache = { settings:{}, employees:{}, entries:{}, pto_log:{}, messages:{}, to_reqs:{}, bulletin:{}, tickets:{} };
+const _pristine = { settings:{}, employees:{}, entries:{}, pto_log:{}, messages:{}, to_reqs:{}, bulletin:{}, tickets:{} };
 const _ready = new Set();
 let _fbError = false;
 
