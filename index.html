@@ -1413,6 +1413,7 @@ case 'toggle-clock':{
       break;
     }
     case 'del-emp':{const e=DB.emps().find(e=>e.id===d.emp);if(!confirm(`Remove ${e?.name}? Time records are kept.`))break;DB.saveEmps(DB.emps().filter(e=>e.id!==d.emp));toast('Removed');render();break;}
+    case 'del-bb':{if(!confirm('Permanently delete this post?'))break;DB.saveBulletin(DB.bulletin().filter(p=>p.id!==d.id));toast('Post deleted 🗑️');render();break;}
 
     // Admin: timesheet editing
     case 'edit-entry': set({editEntryId:d.entry}); break;
