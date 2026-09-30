@@ -834,10 +834,11 @@ function Admin(){
     {id:'pto',label:'🌴 PTO'},
     {id:'tor',label:`📅 Time Off${pendTOR>0?` <span style="background:var(--pink);color:#fff;border-radius:100px;padding:1px 6px;font-size:10px">${pendTOR}</span>`:''}`},
     {id:'notes',label:`💬 Notes${unread>0?` <span style="background:var(--pink);color:#fff;border-radius:100px;padding:1px 6px;font-size:10px">${unread}</span>`:''}`},
+    {id:'board',label:'📌 Board'},
     {id:'settings',label:'⚙ Settings'},
   ];
   const tabBar=tabs.map(t=>`<div class="tab-it ${S.tab===t.id?'active':''}" data-a="tab" data-tab="${t.id}">${t.label}</div>`).join('');
-  const content={overview:AOverview,staff:AStaff,time:ATime,pto:APTO,tor:ATOR,notes:ANotes,settings:ASettings}[S.tab]?.()||'';
+  const content={overview:AOverview,staff:AStaff,time:ATime,pto:APTO,tor:ATOR,notes:ANotes,board:ABoard,settings:ASettings}[S.tab]?.()||'';
   return`<div class="admin"><div class="admin-top"><div class="adm-brand"><div class="sun" style="width:28px;height:28px;font-size:15px">☀️</div><span style="font-family:var(--display);font-size:17px;color:var(--text)">Bright Beginnings</span><span class="adm-pill">ADMIN</span></div><button class="btn btn-g btn-sm" data-a="go-home">← Exit</button></div><div class="tab-bar">${tabBar}</div><div class="adm-cnt">${content}</div></div>`;
 }
 
