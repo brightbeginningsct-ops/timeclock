@@ -529,7 +529,7 @@ function Home(){
   const cards=emps.length===0
     ?`<div style="grid-column:1/-1;text-align:center;padding:40px 20px;color:var(--muted)"><div style="font-size:34px;margin-bottom:10px">👋</div><p>No staff yet. Tap <strong>Admin</strong> to add staff.</p></div>`
     :emps.map(e=>{const a=getActive(e.id);const i=e.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);return`<div class="emp-card ${a?'cin':''}" data-a="sel-emp" data-emp="${e.id}"><div class="emp-av">${i}</div><div class="emp-card-name">${esc(e.name)}</div><div class="emp-card-st">${a?'● CLOCKED IN':'○ CLOCKED OUT'}</div></div>`;}).join('');
-  return`<div class="home"><div class="topbar"><div class="logo-row"><div class="sun">☀️</div><div><div class="co-name">${esc(cfg.companyName)}</div><div class="co-sub">Staff Time Clock</div></div></div><button class="btn btn-g btn-sm" data-a="go-al">⚙ Admin</button></div>
+  return`<div class="home"><div class="topbar"><div class="logo-row"><div class="sun">☀️</div><div><div class="co-name">${esc(cfg.companyName)}</div><div class="co-sub">Staff Time Clock</div></div></div><div style="display:flex;gap:6px"><button class="btn btn-b btn-sm" data-a="go-board">📌 Board</button><button class="btn btn-g btn-sm" data-a="go-al">⚙ Admin</button></div></div>
   <div class="clock-banner"><div class="clock-time" id="lc">${clockStr()}</div><div class="clock-date">${dateStr()}</div></div>
   <div class="grid-instr">Tap your name to clock in or out</div>
   <div class="emp-grid">${cards}</div></div>`;
