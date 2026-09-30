@@ -1056,6 +1056,14 @@ function ANotes(){
   return`<div class="sec-hdr"><div class="sec-ttl">Staff Notes</div><div style="display:flex;gap:8px;align-items:center"><span class="badge bb">${all.length} total</span>${unreadCount>0?`<button class="btn btn-sm btn-b" data-a="mark-notes-read">✓ Mark All Read</button>`:''}</div></div><div class="tbl-wrap"><table class="dtbl"><thead><tr><th>Staff</th><th>Sent</th><th>Message</th><th>Shift</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
+function ABoard(){
+  const posts=DB.bulletin();
+  const rows=posts.length===0?`<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:22px;font-weight:600">No posts yet.</td></tr>`:posts.map(p=>{
+    const isShout=p.type==='shoutout';
+    return`<tr><td><span class="badge ${isShout?'by':'bb'}">${isShout?'🌟 Shout-Out':'📢 Notice'}</span></td><td><strong>${esc(p.authorName)}</strong><div style="font-size:10px;color:var(--muted);margin-top:2px">${fDate(p.ts)} ${fTime(p.ts)}</div></td><td style="white-space:pre-wrap;font-size:12px;max-width:300px">${esc(p.text)}</td><td><button class="btn btn-r btn-sm" data-a="del-bb" data-id="${p.id}">Delete</button></td></tr>`;
+  }).join('');
+  return`<div class="sec-hdr"><div class="sec-ttl">Manage Bulletin Board</div><div class="badge bb">${posts.length} Posts</div></div><div class="tbl-wrap"><table class="dtbl"><thead><tr><th>Type</th><th>Author & Date</th><th>Message</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}  
 function ASettings(){
   const cfg=DB.cfg();
   return`<div style="max-width:480px">
