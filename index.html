@@ -865,7 +865,6 @@ function AStaff(){
     form=`<div class="card" style="margin-bottom:14px;border-color:var(--blue)"><div style="font-family:var(--display);font-size:18px;margin-bottom:13px;color:var(--bl-dk)">${e?'Edit Staff Member':'Add New Staff Member'}</div>
     <div class="field"><label>Full Name</label><input type="text" id="ef-name" value="${esc(e?e.name:'')}"/></div>
     <div class="field"><label>4-Digit PIN</label><input type="text" id="ef-pin" value="${esc(e?e.pin:'')}" maxlength="4" inputmode="numeric"/></div>
-    <div style="display:flex;gap:8px"><div class="field" style="flex:1"><label>Date of Birth</label><input type="date" id="ef-dob" value="${e?e.dob||''}"/></div><div class="field" style="flex:1"><label>Hire Date</label><input type="date" id="ef-hire" value="${e?e.hireDate||''}"/></div></div>
     <div class="field"><label>ADP ID (Employee File Number)</label><input type="text" id="ef-adpid" value="${esc(e?e.adpId:'')}"/></div>
     <div class="field"><label>Starting PTO Balance (hrs)</label><input type="number" id="ef-pto" value="${e?(e.ptoBalance||0):0}" step="0.5" min="0"/></div>
     <div class="field"><label>Custom Accrual Rate (leave blank = company default)</label><input type="number" id="ef-rate" value="${e&&e.customRate!=null?e.customRate:''}" step="0.0001" min="0" placeholder="Blank = default"/></div>
@@ -1060,38 +1059,6 @@ function ASettings(){
   </div>`;
 }
 
-function showCelebration(type, name, years){
-  const div = document.createElement('div');
-  div.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(40,48,74,0.95);color:#fff;font-family:var(--display);text-align:center;animation:fIn 0.3s;overflow:hidden;backdrop-filter:blur(4px)';
-  const emoji = type==='birthday' ? '🎂' : '🎉';
-  const title = type==='birthday' ? 'HAPPY BIRTHDAY' : 'HAPPY ANNIVERSARY';
-  const sub = type==='birthday' ? name + '!' : name + '! (' + years + ' Years)';
-  
-  div.innerHTML = `<div style="font-size:90px;animation:sunPulse 1s ease-in-out infinite">${emoji}</div>
-    <div style="font-size:42px;margin-top:20px;letter-spacing:1px">${title}</div>
-    <div style="font-size:32px;color:var(--yellow);margin-top:5px">${sub}</div>
-    <div style="margin-top:24px;font-family:var(--font);font-weight:800;background:var(--surface);color:var(--text);padding:10px 16px;border-radius:12px;font-size:14px">A shout-out was just posted to the board! 🌟</div>`;
-  document.body.appendChild(div);
-  
-  // Rain the confetti
-  for(let i=0;i<40;i++){
-    const c = document.createElement('div');
-    c.textContent = ['🎈','🎉','✨','🎂','🎊'][Math.floor(Math.random()*5)];
-    c.style.cssText = `position:absolute;font-size:${20+Math.random()*25}px;left:${Math.random()*100}%;top:-10%;transition:transform 3s cubic-bezier(.25,.8,.25,1), top 3s cubic-bezier(.25,.8,.25,1);opacity:0.9`;
-    div.appendChild(c);
-    setTimeout(()=>{
-       c.style.top = '120%';
-       c.style.transform = `rotate(${Math.random()*720}deg) translateX(${Math.random()*150 - 75}px)`;
-    }, 50);
-  }
-  
-  // Fade out and remove after 4.5 seconds
-  setTimeout(() => {
-     div.style.opacity = '0';
-     div.style.transition = 'opacity 0.6s';
-     setTimeout(() => div.remove(), 600);
-  }, 4500);
-}  
 // ─── BIND & EVENTS ───────────────────────────────────────────────────────────
 function bind(){
   clearInterval(window._clk);
@@ -1419,8 +1386,6 @@ case 'toggle-clock':{
       const name=(document.getElementById('ef-name')||{}).value?.trim();
       const pin=(document.getElementById('ef-pin')||{}).value?.trim();
       const adpId=(document.getElementById('ef-adpid')||{}).value?.trim()||'';
-      const dob=(document.getElementById('ef-dob')||{}).value||'';
-      const hireDate=(document.getElementById('ef-hire')||{}).value||'';
       const pto=parseFloat((document.getElementById('ef-pto')||{}).value)||0;
       const rv=(document.getElementById('ef-rate')||{}).value?.trim();
       const customRate=rv?parseFloat(rv):null;
@@ -1428,9 +1393,8 @@ case 'toggle-clock':{
       if(!/^\d{4}$/.test(pin)){toast('PIN must be 4 digits','error');break;}
       const emps=DB.emps();
       if(emps.find(e=>e.pin===pin&&e.id!==S.editEmpId)){toast('PIN already in use','error');break;}
-      
-      if(S.editEmpId){const idx=emps.findIndex(e=>e.id===S.editEmpId);if(idx>=0){emps[idx]={...emps[idx],name,pin,ptoBalance:pto,customRate,adpId,dob,hireDate};DB.saveEmps(emps);toast('Updated! ✅');set({editEmpId:null});}}
-      else{emps.push({id:genId(),name,pin,ptoBalance:pto,customRate,adpId,dob,hireDate,active:true});DB.saveEmps(emps);toast(`${name} added! 🎉`);set({addEmp:false});}
+      if(S.editEmpId){const idx=emps.findIndex(e=>e.id===S.editEmpId);if(idx>=0){emps[idx]={...emps[idx],name,pin,ptoBalance:pto,customRate,adpId};DB.saveEmps(emps);toast('Updated! ✅');set({editEmpId:null});}}
+      else{emps.push({id:genId(),name,pin,ptoBalance:pto,customRate,adpId,active:true});DB.saveEmps(emps);toast(`${name} added! 🎉`);set({addEmp:false});}
       break;
     }
     case 'del-emp':{const e=DB.emps().find(e=>e.id===d.emp);if(!confirm(`Remove ${e?.name}? Time records are kept.`))break;DB.saveEmps(DB.emps().filter(e=>e.id!==d.emp));toast('Removed');render();break;}
