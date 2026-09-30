@@ -489,6 +489,8 @@ const DB = {
   saveToReqs(arr){ return fbSet('to_reqs', arr); },
   bulletin(){ return toArr(_cache.bulletin).sort((a,b)=>new Date(b.ts)-new Date(a.ts)); },
   saveBulletin(arr){ return fbSet('bulletin', arr); },
+  tickets(){ return toArr(_cache.tickets).sort((a,b)=>new Date(b.ts)-new Date(a.ts)); },
+  saveTickets(arr){ return fbSet('tickets', arr); },
 };
 function getActive(empId){return DB.entries().find(e=>e.employeeId===empId&&!e.clockOut)||null;}
 function getMsgs(entryId){return DB.msgs().filter(m=>m.entryId===entryId).sort((a,b)=>new Date(a.ts)-new Date(b.ts));}
