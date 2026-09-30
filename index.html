@@ -1060,6 +1060,38 @@ function ASettings(){
   </div>`;
 }
 
+function showCelebration(type, name, years){
+  const div = document.createElement('div');
+  div.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(40,48,74,0.95);color:#fff;font-family:var(--display);text-align:center;animation:fIn 0.3s;overflow:hidden;backdrop-filter:blur(4px)';
+  const emoji = type==='birthday' ? '🎂' : '🎉';
+  const title = type==='birthday' ? 'HAPPY BIRTHDAY' : 'HAPPY ANNIVERSARY';
+  const sub = type==='birthday' ? name + '!' : name + '! (' + years + ' Years)';
+  
+  div.innerHTML = `<div style="font-size:90px;animation:sunPulse 1s ease-in-out infinite">${emoji}</div>
+    <div style="font-size:42px;margin-top:20px;letter-spacing:1px">${title}</div>
+    <div style="font-size:32px;color:var(--yellow);margin-top:5px">${sub}</div>
+    <div style="margin-top:24px;font-family:var(--font);font-weight:800;background:var(--surface);color:var(--text);padding:10px 16px;border-radius:12px;font-size:14px">A shout-out was just posted to the board! 🌟</div>`;
+  document.body.appendChild(div);
+  
+  // Rain the confetti
+  for(let i=0;i<40;i++){
+    const c = document.createElement('div');
+    c.textContent = ['🎈','🎉','✨','🎂','🎊'][Math.floor(Math.random()*5)];
+    c.style.cssText = `position:absolute;font-size:${20+Math.random()*25}px;left:${Math.random()*100}%;top:-10%;transition:transform 3s cubic-bezier(.25,.8,.25,1), top 3s cubic-bezier(.25,.8,.25,1);opacity:0.9`;
+    div.appendChild(c);
+    setTimeout(()=>{
+       c.style.top = '120%';
+       c.style.transform = `rotate(${Math.random()*720}deg) translateX(${Math.random()*150 - 75}px)`;
+    }, 50);
+  }
+  
+  // Fade out and remove after 4.5 seconds
+  setTimeout(() => {
+     div.style.opacity = '0';
+     div.style.transition = 'opacity 0.6s';
+     setTimeout(() => div.remove(), 600);
+  }, 4500);
+}  
 // ─── BIND & EVENTS ───────────────────────────────────────────────────────────
 function bind(){
   clearInterval(window._clk);
