@@ -1124,6 +1124,26 @@ function act(a,d={}){
     case 'go-emp': set({screen:'emp',addTOReq:false,selCalDay:null}); break;
     case 'go-timecards': set({screen:'etimecards'}); break;
     case 'go-board': set({screen:'board'}); break;
+    case 'open-ticket': set({ticketModal:true}); break;
+    case 'close-ticket': set({ticketModal:false}); break;
+    case 'submit-ticket': {
+      const type = (document.getElementById('tk-type')||{}).value;
+      const desc = (document.getElementById('tk-desc')||{}).value?.trim();
+      if(!desc){toast('Please provide details','error');break;}
+      const emp = DB.emps().find(e=>e.id===S.selEmp);
+      const tks = DB.tickets();
+      tks.push({id:genId(), empId:emp.id, empName:emp.name, type, desc, ts:new Date().toISOString(), resolved:false});
+      DB.saveTickets(tks);
+      toast('Sent to Admin! 🛠️');
+      set({ticketModal:false});
+      break;
+    }
+    case 'resolve-ticket': {
+      const tks = DB.tickets();
+      const idx = tks.findIndex(t=>t.id===d.tid);
+      if(idx>=0){ tks[idx].resolved = true; tks[idx].resolvedAt = new Date().toISOString(); DB.saveTickets(tks); toast('Marked as done!'); render(); }
+      break;
+    }  
     case 'post-bb':{
       const txt=(document.getElementById('bb-text')||{}).value?.trim();
       const type=(document.getElementById('bb-type')||{}).value;
