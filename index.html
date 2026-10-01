@@ -1302,10 +1302,10 @@ const emps=DB.emps();const idx=emps.findIndex(e=>e.id===emp.id);
       const prevHrs = emps[idx].lifetimeHours || 0;
       const newHrs = prevHrs + hrs;
       emps[idx].lifetimeHours = newHrs;
-      if (Math.floor(newHrs / 100) > Math.floor(prevHrs / 100)) {
+      if (Math.floor(newHrs / 1000) > Math.floor(prevHrs / 1000)) {
           emps[idx].spinTokens = (emps[idx].spinTokens || 0) + 1;
           const msgs=DB.msgs();
-          msgs.push({id:genId(), entryId:'general', author:'system', authorId:'system', authorName:'🎡 Casino', text:`${emp.name.split(' ')[0]} just hit a 100-hour milestone and earned a Spin Token!`, ts:new Date().toISOString(), adminRead:false});
+          msgs.push({id:genId(), entryId:'general', author:'system', authorId:'system', authorName:'🎡 Casino', text:`${emp.name.split(' ')[0]} just hit a 1000-hour milestone and earned a Spin Token!`, ts:new Date().toISOString(), adminRead:false});
           DB.saveMsgs(msgs);
       }
       
