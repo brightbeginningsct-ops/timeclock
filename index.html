@@ -626,7 +626,7 @@ return `<div class="modal-overlay" data-a="bg-close"><div class="modal" style="t
   const reminderHTML=reminderEntry?EmpAutoReminderModal(reminderEntry):'';
   const ticketModalHTML=S.ticketModal?`<div class="modal-overlay" data-a="bg-close"><div class="modal"><h2>🛠️ Report Issue or Need</h2><div class="field"><label>What do you need?</label><select id="tk-type"><option value="supply">📦 Supplies Needed</option><option value="fix">🔧 Maintenance / Fix-It</option><option value="other">💬 Other</option></select></div><div class="field"><label>Details</label><textarea id="tk-desc" placeholder="e.g. Size 4 diapers for Infant room, or the gate latch is loose..." rows="3"></textarea></div><div style="display:flex;gap:8px"><button class="btn btn-b" data-a="submit-ticket">Submit to Admin</button><button class="btn btn-g" data-a="close-ticket">Cancel</button></div></div></div>`:'';
 
-  return`<div class="emp-dash"><div class="emp-hdr"><button class="bk-btn" data-a="go-home">←</button><div><div class="emp-greet">Welcome back</div><div class="emp-name">${esc(emp.name)}</div></div></div>
+return`<div class="emp-dash"><div class="emp-hdr"><button class="bk-btn" data-a="go-home">←</button><div><div class="emp-greet">Welcome back</div><div class="emp-name">${esc(emp.name)}</div></div></div>
   <div class="status-card ${active?'cin':''}"><div class="st-lbl">Current Status</div><div class="st-val">${active?(onBreak?'⏸ On Break':'● Clocked In'):'○ Clocked Out'}</div>${active?`<div class="st-since">${onBreak?'Break started':'Since'}${fTime(onBreak?active.breaks[active.breaks.length-1].start:active.clockIn)}</div>`:''}</div>
   ${emp.spinTokens > 0 ? `<div style="margin-bottom:11px"><button class="btn btn-full" style="background:linear-gradient(135deg, #f9c522, #f57f17);color:#fff;font-size:16px;padding:14px;box-shadow:0 4px 15px rgba(249,197,34,.5);border:none;animation:sunPulse 2s infinite" data-a="open-spin">🎡 Spin the Prize Wheel! (${emp.spinTokens} Token${emp.spinTokens>1?'s':''})</button></div>` : ''}
   <div class="note-box"><label>📝 Optional note with this punch</label><textarea id="clock-note" placeholder="e.g. Clocking in a few minutes late — car trouble." rows="2"></textarea></div>
@@ -634,9 +634,9 @@ return `<div class="modal-overlay" data-a="bg-close"><div class="modal" style="t
   <button class="ck-btn ${active?'out':'in'}" data-a="toggle-clock" ${_isConnected?'':'disabled style="opacity:0.5"'}>${active?'⏹ Clock Out':'▶ Clock In'}</button>
   ${active?`<button class="btn ${onBreak?'btn-b':'btn-g'} btn-full" style="margin-bottom:13px;padding:13px 16px;border-radius:14px" data-a="${onBreak?'end-break':'start-break'}">${onBreak?'▶ End Break':'⏸ Start Break'}</button>`:''}
   <div class="stats-row"><div class="stat-box"><div class="stat-lbl">Today</div><div class="stat-val">${fH(todH)}h</div></div><div class="stat-box"><div class="stat-lbl">This Week</div><div class="stat-val">${fH(wkH)}h</div></div></div>
-  <div style="display:flex;gap:8px;margin-bottom:13px"><button class="btn btn-g btn-sm btn-full" data-a="go-timecards">🗂 Timecards</button><button class="btn btn-g btn-sm btn-full" data-a="go-tor">🌴 Time Off${pendTOR>0?` (${pendTOR})`:''}</button><button class="btn btn-g btn-sm btn-full" data-a="go-board">📌 Board</button><button class="btn btn-g btn-sm btn-full" data-a="open-ticket" style="box-shadow:none">🛠️ Report</button></div>
+  <div style="display:flex;gap:8px;margin-bottom:13px"><button class="btn btn-g btn-sm btn-full" data-a="go-timecards">🗂 Timecards</button><button class="btn btn-g btn-sm btn-full" data-a="go-tor">🌴 Time Off${pendTOR>0?` (${pendTOR})`:''}</button><button class="btn btn-g btn-sm btn-full" data-a="go-board">📌 Board</button><button class="btn btn-g btn-sm btn-full" data-a="open-ticket" style="box-shadow:none">🛠️️ Report</button></div>
   <div class="card"><div class="recent-ttl">Recent Shifts — tap 💬 to message admin</div>${recentRows}</div>
-  ${noteModalHTML}${reminderHTML}${ticketModalHTML}</div>`;
+  ${noteModalHTML}${reminderHTML}${ticketModalHTML}${S.spinModal ? EmpSpinModal(emp) : ''}</div>`;
 }
 
 function EmpTimecards(){
