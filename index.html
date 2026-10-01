@@ -1501,8 +1501,8 @@ const pto=parseFloat((document.getElementById('ef-pto')||{}).value)||0;
       if(!/^\d{4}$/.test(pin)){toast('PIN must be 4 digits','error');break;}
       const emps=DB.emps();
       if(emps.find(e=>e.pin===pin&&e.id!==S.editEmpId)){toast('PIN already in use','error');break;}
-      if(S.editEmpId){const idx=emps.findIndex(e=>e.id===S.editEmpId);if(idx>=0){emps[idx]={...emps[idx],name,pin,ptoBalance:pto,customRate,adpId};DB.saveEmps(emps);toast('Updated! ✅');set({editEmpId:null});}}
-      else{emps.push({id:genId(),name,pin,ptoBalance:pto,customRate,adpId,active:true});DB.saveEmps(emps);toast(`${name} added! 🎉`);set({addEmp:false});}
+      if(S.editEmpId){const idx=emps.findIndex(e=>e.id===S.editEmpId);if(idx>=0){emps[idx]={...emps[idx],name,pin,ptoBalance:pto,spinTokens,customRate,adpId};DB.saveEmps(emps);toast('Updated! ✅');set({editEmpId:null});}}
+      else{emps.push({id:genId(),name,pin,ptoBalance:pto,spinTokens,customRate,adpId,active:true});DB.saveEmps(emps);toast(`${name} added! 🎉`);set({addEmp:false});}
       break;
     }
     case 'del-emp':{const e=DB.emps().find(e=>e.id===d.emp);if(!confirm(`Remove ${e?.name}? Time records are kept.`))break;DB.saveEmps(DB.emps().filter(e=>e.id!==d.emp));toast('Removed');render();break;}
