@@ -1222,18 +1222,39 @@ case 'do-spin': {
       if(idx>=0){ tks[idx].resolved = true; tks[idx].resolvedAt = new Date().toISOString(); DB.saveTickets(tks); toast('Marked as done!'); render(); }
       break;
     }  
-    case 'post-bb':{
-      const txt=(document.getElementById('bb-text')||{}).value?.trim();
-      const type=(document.getElementById('bb-type')||{}).value;
-      if(!txt){toast('Please write a message first!','error');break;}
-      const emp=DB.emps().find(e=>e.id===S.selEmp);
-      const posts=DB.bulletin();
-      posts.push({id:genId(), authorId:emp.id, authorName:emp.name, text:txt, type:type, ts:new Date().toISOString()});
-      DB.saveBulletin(posts);
-      toast('Posted to the board! 🎉');
-      render();
-      break;
-    }  
+case 'post-bb':{
+  const txt=(document.getElementById('bb-text')||{}).value?.trim();
+  const type=(document.getElementById('bb-type')||{}).value;
+  const targetId=(document.getElementById('bb-target')||{}).value;
+  if(!txt){toast('Please write a message first!','error');break;}
+  
+  const emp=DB.emps().find(e=>e.id===S.selEmp);
+  const posts=DB.bulletin();
+  posts.push({id:genId(), authorId:emp.id, authorName:emp.name, targetId:targetId, text:txt, type:type, ts:new Date().toISOString()});
+  DB.saveBulletin(posts);
+  
+  // CASINO REQUIREMENT: 1 Token every 10 Peer Shout-Outs
+  if(type === 'shoutout' && targetId && targetId !== emp.id) {
+     const emps = DB.emps();
+     const tIdx = emps.findIndex(e => e.id === targetId);
+     if(tIdx >= 0) {
+         emps[tIdx].shoutoutsReceived = (emps[tIdx].shoutoutsReceived || 0) + 1;
+         
+         // If the count is a multiple of 10, give a token
+         if (emps[tIdx].shoutoutsReceived % 10 === 0) {
+             emps[tIdx].spinTokens = (emps[tIdx].spinTokens || 0) + 1;
+             const msgs = DB.msgs();
+             msgs.push({id:genId(), entryId:'general', author:'system', authorId:'system', authorName:'🎡 Casino', text:`${emps[tIdx].name.split(' ')[0]} just received their ${emps[tIdx].shoutoutsReceived}th shout-out and earned a Spin Token!`, ts:new Date().toISOString(), adminRead:false});
+             DB.saveMsgs(msgs);
+         }
+         DB.saveEmps(emps);
+     }
+  }
+  
+  toast('Posted to the board! 🎉');
+  render();
+  break;
+}  
     case 'go-tor': set({screen:'tor',torCalYear:new Date().getFullYear(),torCalMonth:new Date().getMonth(),torSelDay:null}); break;
     case 'admin-login':{const pw=(document.getElementById('apw')||{}).value||'';if(pw===DB.cfg().adminPassword)set({screen:'admin',tab:'overview'});else toast('Incorrect password','error');break;}
     case 'tab': set({tab:d.tab,editEntryId:null,adjPTO:null,addEmp:false,editEmpId:null,selCalDay:null}); break;
