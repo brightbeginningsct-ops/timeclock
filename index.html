@@ -1175,6 +1175,33 @@ function act(a,d={}){
     case 'go-board': set({screen:'board'}); break;
     case 'open-ticket': set({ticketModal:true}); break;
     case 'close-ticket': set({ticketModal:false}); break;
+    case 'open-spin': set({spinModal:true, spinResult:null, isSpinning:false}); break;
+case 'close-spin': set({spinModal:false, spinResult:null}); break;
+case 'do-spin': {
+   const emps = DB.emps();
+   const idx = emps.findIndex(e=>e.id===S.selEmp);
+   if(idx<0 || !(emps[idx].spinTokens > 0)) break;
+   set({isSpinning: true});
+   
+   setTimeout(() => {
+     emps[idx].spinTokens -= 1;
+     const r = Math.random();
+     let prize = '';
+     if(r < 0.05) prize = "👑 Admin covers your room for 1 hour!";
+     else if(r < 0.25) prize = "☕ $10 Coffee or Target Gift Card";
+     else if(r < 0.50) prize = "🚗 VIP Parking Spot for the week";
+     else if(r < 0.75) prize = "🏃 Skip closing duties for one shift";
+     else prize = "🎵 You pick the breakroom playlist";
+     
+     DB.saveEmps(emps);
+     const msgs = DB.msgs();
+     msgs.push({id:genId(), entryId:'general', author:'system', authorId:'system', authorName:'🎡 Casino', text:`WINNER! ${emps[idx].name.split(' ')[0]} just spun the wheel and won: ${prize}`, ts:new Date().toISOString(), adminRead:false});
+     DB.saveMsgs(msgs);
+     
+     set({isSpinning: false, spinResult: prize});
+   }, 1500); // Spins for 1.5 seconds
+   break;
+}  
     case 'submit-ticket': {
       const type = (document.getElementById('tk-type')||{}).value;
       const desc = (document.getElementById('tk-desc')||{}).value?.trim();
