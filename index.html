@@ -887,7 +887,7 @@ function AStaff(){
     <div class="field"><label>Full Name</label><input type="text" id="ef-name" value="${esc(e?e.name:'')}"/></div>
     <div class="field"><label>4-Digit PIN</label><input type="text" id="ef-pin" value="${esc(e?e.pin:'')}" maxlength="4" inputmode="numeric"/></div>
     <div class="field"><label>ADP ID (Employee File Number)</label><input type="text" id="ef-adpid" value="${esc(e?e.adpId:'')}"/></div>
-    <div class="field"><label>Starting PTO Balance (hrs)</label><input type="number" id="ef-pto" value="${e?(e.ptoBalance||0):0}" step="0.5" min="0"/></div>
+    <div style="display:flex;gap:8px"><div class="field" style="flex:1"><label>Starting PTO Balance (hrs)</label><input type="number" id="ef-pto" value="${e?(e.ptoBalance||0):0}" step="0.5" min="0"/></div><div class="field" style="flex:1"><label>🎡 Prize Wheel Tokens</label><input type="number" id="ef-tokens" value="${e?(e.spinTokens||0):0}" min="0"/></div></div>
     <div class="field"><label>Custom Accrual Rate (leave blank = company default)</label><input type="number" id="ef-rate" value="${e&&e.customRate!=null?e.customRate:''}" step="0.0001" min="0" placeholder="Blank = default"/></div>
     <div style="display:flex;gap:9px"><button class="btn btn-b" data-a="save-emp">${e?'Save Changes':'Add Staff Member'}</button><button class="btn btn-g" data-a="cancel-emp">Cancel</button></div></div>`;
   }
