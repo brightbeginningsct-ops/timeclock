@@ -1079,7 +1079,48 @@ function ASettings(){
   <div class="card" style="margin-bottom:11px"><div style="font-family:var(--display);font-size:17px;margin-bottom:4px">Overtime Rule</div><p style="font-size:12px;color:var(--text2);font-weight:600">Overtime is calculated for any shift exceeding 8 hours per day. Hours above 8 are flagged as OT in timesheets and the pay period summary.</p></div>
   </div>`;
 }
+function showCelebration(type, name, years, holiData){
+const div = document.createElement('div');
+div.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(40,48,74,0.95);color:#fff;font-family:var(--display);text-align:center;animation:fIn 0.3s;overflow:hidden;backdrop-filter:blur(4px)';
 
+let emoji, title, sub, confArr, boardMsg;
+if(type === 'holiday') {
+ emoji = holiData.emoji;
+ title = `HAPPY ${holiData.name.toUpperCase()}!`;
+ sub = `Have a great shift, ${name}!`;
+ confArr = holiData.conf;
+ boardMsg = ''; 
+} else {
+ emoji = type==='birthday' ? '🎂' : '🎉';
+ title = type==='birthday' ? 'HAPPY BIRTHDAY' : 'HAPPY ANNIVERSARY';
+ sub = type==='birthday' ? name + '!' : name + '! (' + years + ' Years)';
+ confArr = ['🎈','🎉','✨','🎂','🎊'];
+ boardMsg = `<div style="margin-top:24px;font-family:var(--font);font-weight:800;background:var(--surface);color:var(--text);padding:10px 16px;border-radius:12px;font-size:14px">A shout-out was just posted to the board! 🌟</div>`;
+}
+
+div.innerHTML = `<div style="font-size:90px;animation:sunPulse 1s ease-in-out infinite">${emoji}</div>
+<div style="font-size:42px;margin-top:20px;letter-spacing:1px">${title}</div>
+<div style="font-size:32px;color:var(--yellow);margin-top:5px">${sub}</div>
+${boardMsg}`;
+document.body.appendChild(div);
+
+for(let i=0;i<40;i++){
+const c = document.createElement('div');
+c.textContent = confArr[Math.floor(Math.random()*confArr.length)];
+c.style.cssText = `position:absolute;font-size:${20+Math.random()*25}px;left:${Math.random()*100}%;top:-10%;transition:transform 3s cubic-bezier(.25,.8,.25,1), top 3s cubic-bezier(.25,.8,.25,1);opacity:0.9`;
+div.appendChild(c);
+setTimeout(()=>{
+   c.style.top = '120%';
+   c.style.transform = `rotate(${Math.random()*720}deg) translateX(${Math.random()*150 - 75}px)`;
+}, 50);
+}
+
+setTimeout(() => {
+ div.style.opacity = '0';
+ div.style.transition = 'opacity 0.6s';
+ setTimeout(() => div.remove(), 600);
+}, 4500);
+}
 // ─── BIND & EVENTS ───────────────────────────────────────────────────────────
 function bind(){
   clearInterval(window._clk);
