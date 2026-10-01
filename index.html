@@ -1189,11 +1189,11 @@ case 'do-spin': {
      emps[idx].spinTokens -= 1;
      const r = Math.random();
      let prize = '';
-     if(r < 0.01) prize = "👑 Pick a theme day for the center";
-     else if(r < 0.01) prize = "☕ $10 Dunkin Gift Card";
-     else if(r < 0.01) prize = "💵 $10 Walmart or Target Gift Card";
-     else if(r < 0.00) prize = "🏃 Skip closing duties for one shift";
-     else prize = "☕ Free coffee or beverage of your choice"👑 Pick a theme day for the center";
+     if(r < 0.05) prize = "👑 Admin covers your room for 1 hour!";
+     else if(r < 0.25) prize = "☕ $10 Coffee or Target Gift Card";
+     else if(r < 0.50) prize = "🚗 VIP Parking Spot for the week";
+     else if(r < 0.75) prize = "🏃 Skip closing duties for one shift";
+     else prize = "🎵 You pick the breakroom playlist";
      
      DB.saveEmps(emps);
      const msgs = DB.msgs();
@@ -1201,7 +1201,7 @@ case 'do-spin': {
      DB.saveMsgs(msgs);
      
      set({isSpinning: false, spinResult: prize});
-   }, 1500); // Spins for 1.5 seconds
+   }, 1500); 
    break;
 }
 case 'read-msg': {
@@ -1224,7 +1224,7 @@ case 'del-msg': {
     DB.saveMsgs(newMsgs);
     render();
     break;
-}      
+}     
     case 'submit-ticket': {
       const type = (document.getElementById('tk-type')||{}).value;
       const desc = (document.getElementById('tk-desc')||{}).value?.trim();
