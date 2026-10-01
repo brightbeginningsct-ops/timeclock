@@ -1188,9 +1188,9 @@ case 'do-spin': {
      const r = Math.random();
      let prize = '';
      if(r < 0.05) prize = "👑 Admin covers your room for 1 hour!";
-     else if(r < 0.25) prize = "☕ $10 Coffee or Target Gift Card";
-     else if(r < 0.50) prize = "🚗 VIP Parking Spot for the week";
-     else if(r < 0.75) prize = "🏃 Skip closing duties for one shift";
+     else if(r < 0.05) prize = "☕ $10 Dunkin Gift Card";
+     else if(r < 0.05) prize = "$10 Walmart or Target Gift Card";
+     else if(r < 0.05) prize = "🏃 Skip closing duties for one shift";
      else prize = "🎵 You pick the breakroom playlist";
      
      DB.saveEmps(emps);
