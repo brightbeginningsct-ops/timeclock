@@ -1056,20 +1056,20 @@ function ANotes(){
   const emps=DB.emps();
   const all=DB.msgs().filter(m=>m.author!=='admin').sort((a,b)=>new Date(b.ts)-new Date(a.ts));
   
-  // Count how many are unread so we know whether to show the "Mark Read" button
-  const unreadCount = all.filter(m=>!m.adminRead).length;
+// Count how many are unread so we know whether to show the "Mark Read" button
+const unreadCount = all.filter(m=>!m.adminRead).length;
 
-  const rows=all.length===0?`<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:22px;font-weight:600">No staff notes yet 🌟</td></tr>`:all.map(m=>{
-    const emp=emps.find(e=>e.id===m.authorId);
-    const entry=DB.entries().find(e=>e.id===m.entryId);
-    
-    // Check if it is unread and apply the bold styling
-    const isNew = !m.adminRead;
-    
-    return`<tr style="${isNew ? 'background: var(--bl-lt);' : ''}"><td><strong>${emp?esc(emp.name):esc(m.authorName)}</strong></td><td style="font-size:11px;font-weight:600">${fDate(m.ts)}<br><span style="color:var(--muted)">${fTime(m.ts)}</span></td><td style="${isNew ? 'font-weight:900;color:var(--bl-dk)' : ''}">${isNew ? '🆕 ' : ''}${esc(m.text)}</td><td style="font-size:11px;color:var(--text2)">${entry?`${fDate(entry.clockIn)} ${fTime(entry.clockIn)}`:'-'}</td><td><button class="btn btn-g btn-sm" data-a="go-to-entry" data-entry="${m.entryId}">Edit Entry</button></td></tr>`;
-  }).join('');
+const rows=all.length===0?`<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:22px;font-weight:600">No staff notes yet 🌟</td></tr>`:all.map(m=>{
+  const emp=emps.find(e=>e.id===m.authorId);
+  const entry=DB.entries().find(e=>e.id===m.entryId);
   
-  return`<div class="sec-hdr"><div class="sec-ttl">Staff Notes</div><div style="display:flex;gap:8px;align-items:center"><span class="badge bb">${all.length} total</span>${unreadCount>0?`<button class="btn btn-sm btn-b" data-a="mark-notes-read">✓ Mark All Read</button>`:''}</div></div><div class="tbl-wrap"><table class="dtbl"><thead><tr><th>Staff</th><th>Sent</th><th>Message</th><th>Shift</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  // Check if it is unread and apply the bold styling
+  const isNew = !m.adminRead;
+  
+  return`<tr style="${isNew ? 'background: var(--bl-lt);' : ''}"><td><strong>${emp?esc(emp.name):esc(m.authorName)}</strong></td><td style="font-size:11px;font-weight:600">${fDate(m.ts)}<br><span style="color:var(--muted)">${fTime(m.ts)}</span></td><td style="${isNew ? 'font-weight:900;color:var(--bl-dk)' : ''}">${isNew ? '🆕 ' : ''}${esc(m.text)}</td><td style="font-size:11px;color:var(--text2)">${entry?`${fDate(entry.clockIn)}${fTime(entry.clockIn)}`:'-'}</td><td data-mid="${m.id}"><div style="display:flex;gap:6px;flex-wrap:wrap">${isNew ? `<button class="btn btn-b btn-sm" data-a="read-msg">✓ Read</button>` : ''}<button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #f87171" data-a="del-msg">🗑 Delete</button>${m.entryId && m.entryId !== 'general' ? `<button class="btn btn-g btn-sm" data-a="go-to-entry" data-entry="${m.entryId}">Edit Entry</button>` : ''}</div></td></tr>`;
+}).join('');
+
+return`<div class="sec-hdr"><div class="sec-ttl">Staff Notes</div><div style="display:flex;gap:8px;align-items:center"><span class="badge bb">${all.length} total</span>${unreadCount>0?`<button class="btn btn-sm btn-b" data-a="mark-notes-read">✓ Mark All Read</button>`:''}</div></div><div class="tbl-wrap"><table class="dtbl"><thead><tr><th>Staff</th><th>Sent</th><th>Message</th><th>Shift</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 function ABoard(){
