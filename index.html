@@ -1203,7 +1203,28 @@ case 'do-spin': {
      set({isSpinning: false, spinResult: prize});
    }, 1500); // Spins for 1.5 seconds
    break;
-}  
+}
+case 'read-msg': {
+    const btn = window.event?.target?.closest('[data-mid]');
+    if(!btn) break;
+    const msgs = DB.msgs();
+    const idx = msgs.findIndex(m => m.id === btn.dataset.mid);
+    if(idx >= 0) {
+        msgs[idx].adminRead = true;
+        DB.saveMsgs(msgs);
+        render();
+    }
+    break;
+}
+case 'del-msg': {
+    const btn = window.event?.target?.closest('[data-mid]');
+    if(!btn) break;
+    const msgs = DB.msgs();
+    const newMsgs = msgs.filter(m => m.id !== btn.dataset.mid);
+    DB.saveMsgs(newMsgs);
+    render();
+    break;
+}      
     case 'submit-ticket': {
       const type = (document.getElementById('tk-type')||{}).value;
       const desc = (document.getElementById('tk-desc')||{}).value?.trim();
