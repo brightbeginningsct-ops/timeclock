@@ -1295,9 +1295,21 @@ case 'toggle-clock':{
           const hrs=workedHours(active);
           const rate=emp.customRate!=null?emp.customRate:cfg.accrualRate;
           const accrued=hrs*rate;
-          const emps=DB.emps();const idx=emps.findIndex(e=>e.id===emp.id);
-          emps[idx].ptoBalance=(emps[idx].ptoBalance||0)+accrued;
-          p2 = DB.saveEmps(emps);
+const emps=DB.emps();const idx=emps.findIndex(e=>e.id===emp.id);
+      emps[idx].ptoBalance=(emps[idx].ptoBalance||0)+accrued;
+      
+      // CASINO REQUIREMENT: 1 Token every 100 Hours Worked
+      const prevHrs = emps[idx].lifetimeHours || 0;
+      const newHrs = prevHrs + hrs;
+      emps[idx].lifetimeHours = newHrs;
+      if (Math.floor(newHrs / 100) > Math.floor(prevHrs / 100)) {
+          emps[idx].spinTokens = (emps[idx].spinTokens || 0) + 1;
+          const msgs=DB.msgs();
+          msgs.push({id:genId(), entryId:'general', author:'system', authorId:'system', authorName:'🎡 Casino', text:`${emp.name.split(' ')[0]} just hit a 100-hour milestone and earned a Spin Token!`, ts:new Date().toISOString(), adminRead:false});
+          DB.saveMsgs(msgs);
+      }
+      
+      p2 = DB.saveEmps(emps);
           const log=DB.ptoLog();log.push({id:genId(),empId:emp.id,date:new Date().toISOString(),amount:accrued,note:`Auto-accrued (${fH(hrs)}h worked)`});
           p3 = DB.savePTOLog(log);
         }
