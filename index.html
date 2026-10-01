@@ -1276,12 +1276,20 @@ case 'toggle-clock':{
           p4 = DB.saveMsgs(msgs);
         }
 
-        // 2. WAIT for the database to send back the receipts before succeeding
-        Promise.all([p1, p2, p3, p4]).then(() => {
-           S.isSyncing = false;
-           toast(`Clocked out! See you, ${emp.name.split(' ')[0]}! 👋`);
-           render();setTimeout(()=>set({screen:'home',selEmp:null}),2200);
-        }).catch(e => {
+// 2. WAIT for the database to send back the receipts before succeeding
+    Promise.all([p1, p2, p3, p4]).then(() => {
+       S.isSyncing = false;
+       const outMsgs = [
+         `Clocked out! Great job today, ${emp.name.split(' ')[0]}! 👋`,
+         `Clocked out! Go get some well-deserved rest! 🛋️`,
+         `Clocked out! Thanks for all your hard work today! 🌟`,
+         `Clocked out! You survived! See you next time! 🎉`,
+         `Clocked out! Enjoy your evening! 🌙`,
+         `Clocked out! Leave the chaos behind, you earned it! ✌️`
+       ];
+       toast(outMsgs[Math.floor(Math.random() * outMsgs.length)]);
+       render();setTimeout(()=>set({screen:'home',selEmp:null}),2200);
+    }).catch(e => {
            S.isSyncing = false;
            toast('Network Error! Please wait a moment and try again.','error');
            if(btn) { btn.textContent = '⏹ Clock Out'; btn.style.pointerEvents = 'auto'; btn.style.opacity = '1'; }
