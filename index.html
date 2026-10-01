@@ -810,14 +810,16 @@ function Board(){
   }).join('');
 
   // If logged in, show the post box. If not, tell them to log in to post.
-  const postBox = emp 
-    ? `<div class="card" style="margin-bottom:14px">
-        <div class="field"><textarea id="bb-text" placeholder="Write a shout-out to a coworker or a team announcement..." rows="3"></textarea></div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <select id="bb-type" style="width:auto;flex:1"><option value="shoutout">🌟 Shout-Out</option><option value="announcement">📢 Announcement</option></select>
-          <button class="btn btn-b" data-a="post-bb">Post</button>
-        </div>
-      </div>`
+const empOpts = DB.emps().filter(e => e.active !== false).map(e => `<option value="${e.id}">${esc(e.name)}</option>`).join('');
+const postBox = emp 
+? `<div class="card" style="margin-bottom:14px">
+    <div class="field" style="margin-bottom:8px"><select id="bb-target"><option value="">-- Who is this for? (Optional) --</option>${empOpts}</select></div>
+    <div class="field"><textarea id="bb-text" placeholder="Write a shout-out to a coworker or a team announcement..." rows="3"></textarea></div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <select id="bb-type" style="width:auto;flex:1"><option value="shoutout">🌟 Shout-Out</option><option value="announcement">📢 Announcement</option></select>
+      <button class="btn btn-b" data-a="post-bb">Post</button>
+    </div>
+  </div>`
     : `<div style="background:var(--bl-lt);border-radius:10px;padding:12px;text-align:center;color:var(--bl-dk);font-size:12px;font-weight:700;margin-bottom:14px;border:1.5px solid var(--blue)">Tap your name on the home screen and log in to write a post.</div>`;
 
   return `<div class="emp-dash" style="overflow-y:auto">
