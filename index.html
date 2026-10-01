@@ -1493,8 +1493,9 @@ case 'toggle-clock':{
       const name=(document.getElementById('ef-name')||{}).value?.trim();
       const pin=(document.getElementById('ef-pin')||{}).value?.trim();
       const adpId=(document.getElementById('ef-adpid')||{}).value?.trim()||'';
-      const pto=parseFloat((document.getElementById('ef-pto')||{}).value)||0;
-      const rv=(document.getElementById('ef-rate')||{}).value?.trim();
+const pto=parseFloat((document.getElementById('ef-pto')||{}).value)||0;
+  const spinTokens=parseInt((document.getElementById('ef-tokens')||{}).value)||0;
+  const rv=(document.getElementById('ef-rate')||{}).value?.trim();
       const customRate=rv?parseFloat(rv):null;
       if(!name||!pin){toast('Name and PIN required','error');break;}
       if(!/^\d{4}$/.test(pin)){toast('PIN must be 4 digits','error');break;}
