@@ -813,7 +813,7 @@ function Board(){
 const empOpts = DB.emps().filter(e => e.active !== false).map(e => `<option value="${e.id}">${esc(e.name)}</option>`).join('');
 const postBox = emp 
 ? `<div class="card" style="margin-bottom:14px">
-    <div class="field" style="margin-bottom:8px"><select id="bb-target"><option value="">-- Who is this for? (Optional) --</option>${empOpts}</select></div>
+    <div class="field" style="margin-bottom:8px"><select id="bb-target"><option value="">-- Who would you like to shout-out? (Optional) --</option>${empOpts}</select></div>
     <div class="field"><textarea id="bb-text" placeholder="Write a shout-out to a coworker or a team announcement..." rows="3"></textarea></div>
     <div style="display:flex;gap:8px;align-items:center">
       <select id="bb-type" style="width:auto;flex:1"><option value="shoutout">🌟 Shout-Out</option><option value="announcement">📢 Announcement</option></select>
